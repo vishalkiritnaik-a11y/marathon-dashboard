@@ -1,0 +1,3028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Marathon" />
+  <meta name="theme-color" content="#0f1117" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <title>Marathon Training Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #5b7fff;
+      --accent2: #ff6b6b;
+      --accent3: #51cf66;
+      --accent4: #fcc419;
+      --text: #e8eaf0;
+      --text2: #8b90a7;
+      --z1: #51cf66;
+      --z2: #74c0fc;
+      --z3: #fcc419;
+      --z4: #ff922b;
+      --z5: #ff6b6b;
+      --radius: 12px;
+      --gap: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      /* push content below Dynamic Island / status bar */
+      padding-top: env(safe-area-inset-top);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      /* leave room for home indicator */
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .header-left h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-left p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .badge span { color: var(--accent); font-weight: 600; }
+
+    /* ── Layout ── */
+    .main { padding: var(--gap) 28px 40px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Setup banner ── */
+    .setup-banner {
+      background: linear-gradient(135deg, #1a2550, #1a3040);
+      border: 1px solid #3a4570;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: var(--gap);
+      display: none;
+    }
+    .setup-banner h2 { font-size: 15px; margin-bottom: 8px; }
+    .setup-banner p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+    .setup-banner code {
+      background: rgba(0,0,0,0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #7dd3fc;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+    .tab {
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── KPI grid ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 6px; }
+    .kpi-value { font-size: 30px; font-weight: 700; line-height: 1; }
+    .kpi-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+    .kpi-value.accent { color: var(--accent); }
+    .kpi-value.green { color: var(--accent3); }
+    .kpi-value.yellow { color: var(--accent4); }
+    .kpi-value.red { color: var(--accent2); }
+
+    /* ── Charts ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: var(--gap);
+      margin-bottom: var(--gap);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 16px;
+    }
+    .card canvas { max-height: 260px; }
+    .card-full { grid-column: 1 / -1; }
+
+    /* ── Daily Brief ── */
+    .brief-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .brief-hero {
+      padding: 22px 28px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brief-readiness {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      border: 3px solid currentColor;
+    }
+    .brief-readiness .rnum { font-size: 26px; line-height: 1; }
+    .brief-readiness .rlbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; opacity: 0.75; margin-top: 2px; }
+    .brief-main { flex: 1; min-width: 0; }
+    .brief-verdict { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+    .brief-subtitle { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .brief-body {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0;
+    }
+    .brief-signal {
+      padding: 14px 24px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .brief-signal:last-child { border-right: none; }
+    .brief-signal-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text2);
+      margin-bottom: 5px;
+    }
+    .brief-signal-value {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .brief-signal-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+    .brief-workout {
+      padding: 18px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .brief-workout-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text2);
+      margin-bottom: 6px;
+    }
+    .brief-workout-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .brief-workout-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+    .brief-blocks { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .brief-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+    .brief-block strong { display: block; font-size: 13px; margin-bottom: 2px; }
+
+    /* ── Nightly Prep ── */
+    .prep-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .prep-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .prep-header-left { display: flex; align-items: center; gap: 12px; }
+    .prep-moon { font-size: 20px; }
+    .prep-title { font-size: 15px; font-weight: 700; }
+    .prep-subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .prep-tomorrow-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid currentColor;
+    }
+    .prep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    .prep-item {
+      padding: 18px 22px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .prep-item:last-child { border-right: none; }
+    .prep-item-icon { font-size: 18px; margin-bottom: 8px; }
+    .prep-item-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text2);
+      margin-bottom: 5px;
+    }
+    .prep-item-value { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .prep-item-detail { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    @media (max-width: 640px) {
+      .prep-grid { grid-template-columns: repeat(2, 1fr); }
+      .prep-item { padding: 14px 14px; border-right: none; }
+      .prep-item:nth-child(odd) { border-right: 1px solid var(--border); }
+      .prep-header { padding: 14px 16px; flex-wrap: wrap; gap: 8px; }
+    }
+
+    /* ── Activity log table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: var(--text); }
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr:last-child td { border-bottom: none; }
+    .run-type {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .run-type.Easy { background: rgba(81,207,102,0.15); color: var(--z1); }
+    .run-type.Tempo { background: rgba(255,146,43,0.15); color: var(--z4); }
+    .run-type.Long { background: rgba(91,127,255,0.15); color: var(--accent); }
+    .run-type.Speed { background: rgba(255,107,107,0.15); color: var(--z5); }
+    .run-type.Recovery { background: rgba(116,192,252,0.15); color: var(--z2); }
+
+    /* ── Training Plan ── */
+    .plan-config {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: var(--gap);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .plan-config .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .plan-config label { font-size: 12px; color: var(--text2); }
+    .plan-config input, .plan-config select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    .plan-config input:focus, .plan-config select:focus { border-color: var(--accent); }
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+
+    .plan-grid {
+      display: grid;
+      gap: var(--gap);
+    }
+    .plan-week {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .plan-week.current-week {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 0 20px rgba(91,127,255,0.15);
+    }
+    .plan-week-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .plan-week-title { font-size: 13px; font-weight: 600; }
+    .plan-week-title small { font-weight: 400; color: var(--text2); margin-left: 8px; font-size: 12px; }
+    .plan-week-miles { font-size: 13px; color: var(--accent); font-weight: 600; }
+    .plan-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .plan-day {
+      background: var(--surface2);
+      border-radius: 6px;
+      padding: 8px 6px;
+      text-align: center;
+      min-height: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+    .plan-day.rest { opacity: 0.45; }
+    .plan-day.completed { border: 1px solid var(--accent3); background: rgba(81,207,102,0.08); }
+    .plan-day.today { border: 1px solid var(--accent); background: rgba(91,127,255,0.1); }
+    .day-name { font-size: 10px; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
+    .day-workout { font-size: 11px; font-weight: 600; margin-top: 2px; }
+    .day-dist { font-size: 11px; color: var(--text2); }
+    .day-workout.easy { color: var(--z1); }
+    .day-workout.tempo { color: var(--z4); }
+    .day-workout.long { color: var(--accent); }
+    .day-workout.speed { color: var(--z5); }
+    .day-workout.rest { color: var(--text2); }
+    .day-workout.recovery { color: var(--z2); }
+
+    .progress-bar-wrap { margin-top: 20px; margin-bottom: 4px; }
+    .progress-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3)); border-radius: 4px; transition: width 0.5s; }
+
+    /* ── Data source note ── */
+    .data-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .data-note a { color: var(--accent); text-decoration: none; }
+
+    #coach-week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    /* ══ MOBILE RESPONSIVE ══════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      /* Header */
+      .header { padding: 14px 16px; gap: 10px; }
+      .header-left h1 { font-size: 16px; }
+      .header-left p { font-size: 12px; }
+      .header-right { gap: 6px; }
+      .badge { padding: 4px 8px; font-size: 11px; }
+      /* Hide less critical badges on small screens */
+      .badge:nth-child(4), .badge:nth-child(5) { display: none; }
+
+      /* Main padding */
+      .main { padding: 12px 12px 60px; }
+
+      /* Tabs — horizontal scroll */
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0;
+        margin-left: -12px;
+        margin-right: -12px;
+        padding: 0 12px;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab { padding: 10px 14px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+
+      /* KPI grid — 2 columns */
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .kpi { padding: 14px 14px; }
+      .kpi-value { font-size: 24px; }
+      .kpi-label { font-size: 10px; }
+
+      /* Charts — single column */
+      .chart-grid { grid-template-columns: 1fr !important; gap: 10px; }
+      .card { padding: 16px 16px; }
+      .card canvas { max-height: 200px; }
+
+      /* Daily Brief */
+      .brief-hero { padding: 16px 16px 14px; gap: 14px; }
+      .brief-readiness { width: 68px; height: 68px; }
+      .brief-readiness .rnum { font-size: 22px; }
+      .brief-verdict { font-size: 16px; }
+      .brief-subtitle { font-size: 12px; }
+      .brief-body { grid-template-columns: repeat(2, 1fr); }
+      .brief-signal { padding: 12px 14px; border-right: none; }
+      .brief-signal:nth-child(odd) { border-right: 1px solid var(--border); }
+      .brief-signal-value { font-size: 13px; }
+      .brief-workout { padding: 14px 16px; }
+      .brief-workout-title { font-size: 15px; }
+      .brief-block { padding: 7px 10px; }
+
+      /* Tables — scroll horizontally, tighter text */
+      table { font-size: 12px; }
+      thead th { padding: 8px 10px; }
+      tbody td { padding: 8px 10px; }
+
+      /* Training plan 7-day grid — shrink cells */
+      .plan-days { gap: 3px; }
+      .plan-day { padding: 6px 3px; min-height: 52px; }
+      .day-name { font-size: 9px; }
+      .day-workout { font-size: 10px; }
+      .day-dist { font-size: 10px; }
+      .plan-config { gap: 12px; }
+      .plan-config .form-group { width: 100%; }
+      .plan-config input, .plan-config select { width: 100%; }
+
+      /* Coach tab */
+      #coach-week-grid { gap: 3px; }
+      .coach-day-cell { padding: 6px 4px !important; min-height: 80px !important; }
+    }
+
+    /* Slightly larger phones / small tablets */
+    @media (min-width: 641px) and (max-width: 900px) {
+      .main { padding: var(--gap) 16px 40px; }
+      .chart-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+      .brief-body { grid-template-columns: repeat(2, 1fr); }
+      .brief-signal:nth-child(odd) { border-right: 1px solid var(--border); }
+      .brief-signal:last-child { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <h1>NYC Marathon 2026 — Vishal</h1>
+    <p id="header-sub">Goal: 3:25:00 (7:49/mi) · Nov 1, 2026</p>
+  </div>
+  <div class="header-right">
+    <div class="badge">Phase <span id="header-phase">—</span></div>
+    <div class="badge">Week <span id="header-week">—</span></div>
+    <div class="badge"><span id="header-weeks-left">—</span> weeks to race</div>
+    <div class="badge">VO2 Max <span id="vo2-badge">—</span></div>
+    <div class="badge">Data: <span id="data-date-badge">—</span></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Setup instructions (shown when no data file is loaded) -->
+  <div class="setup-banner" id="setup-banner">
+    <h2>🏃 Connect your Garmin data</h2>
+    <p>
+      No <code>garmin_data.json</code> found. Run the fetcher script to pull your real Garmin data:<br><br>
+      <code>cd marathon-training &amp;&amp; python3 fetch_garmin.py</code><br><br>
+      Then reload this page. Until then, the dashboard is showing <strong>sample data</strong> so you can explore the layout.
+    </p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('overview')">Overview</div>
+    <div class="tab" onclick="switchTab('coach')">Coach</div>
+    <div class="tab" onclick="switchTab('log')">Activity Log</div>
+    <div class="tab" onclick="switchTab('strength')">Strength</div>
+    <div class="tab" onclick="switchTab('recovery')">Sleep & Recovery</div>
+  </div>
+
+  <!-- ══════════ OVERVIEW TAB ══════════ -->
+  <div class="tab-panel active" id="tab-overview">
+    <div id="daily-brief" style="margin-bottom:var(--gap);"></div>
+    <div id="nightly-prep" style="margin-bottom:var(--gap);"></div>
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">This Week</div>
+        <div class="kpi-value accent" id="kpi-week-miles">—</div>
+        <div class="kpi-sub">miles</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Longest Run</div>
+        <div class="kpi-value green" id="kpi-longest">—</div>
+        <div class="kpi-sub">miles</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Pace</div>
+        <div class="kpi-value" id="kpi-pace">—</div>
+        <div class="kpi-sub">min/mile</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Peak Week</div>
+        <div class="kpi-value yellow" id="kpi-peak">—</div>
+        <div class="kpi-sub">miles</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Runs</div>
+        <div class="kpi-value" id="kpi-total-runs">—</div>
+        <div class="kpi-sub">in history</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Heart Rate</div>
+        <div class="kpi-value red" id="kpi-hr">—</div>
+        <div class="kpi-sub">bpm</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card card-full">
+        <div class="card-title">Weekly Mileage</div>
+        <canvas id="chart-weekly-miles"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Average Pace Trend (min/mile)</div>
+        <canvas id="chart-pace"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Heart Rate Zone Distribution</div>
+        <canvas id="chart-hr-zones"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Run Type Breakdown</div>
+        <canvas id="chart-run-types"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Long Run Progression</div>
+        <canvas id="chart-long-runs"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ACTIVITY LOG TAB ══════════ -->
+  <div class="tab-panel" id="tab-log">
+    <div class="card" style="margin-bottom: 0;">
+      <div class="card-title">All Runs</div>
+      <div class="table-wrap">
+        <table id="activity-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable(0)">Date ↕</th>
+              <th onclick="sortTable(1)">Name</th>
+              <th onclick="sortTable(2)">Type</th>
+              <th onclick="sortTable(3)">Distance ↕</th>
+              <th onclick="sortTable(4)">Time</th>
+              <th onclick="sortTable(5)">Pace ↕</th>
+              <th onclick="sortTable(6)">Avg HR ↕</th>
+              <th onclick="sortTable(7)">Elev Gain</th>
+            </tr>
+          </thead>
+          <tbody id="activity-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ STRENGTH TAB ══════════ -->
+  <div class="tab-panel" id="tab-strength">
+    <div class="kpi-grid" id="strength-kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">This Week</div>
+        <div class="kpi-value accent" id="skpi-week">—</div>
+        <div class="kpi-sub">sessions</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Sessions</div>
+        <div class="kpi-value green" id="skpi-total">—</div>
+        <div class="kpi-sub">in history</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Duration</div>
+        <div class="kpi-value" id="skpi-duration">—</div>
+        <div class="kpi-sub">minutes</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Calories</div>
+        <div class="kpi-value yellow" id="skpi-calories">—</div>
+        <div class="kpi-sub">per session</div>
+      </div>
+    </div>
+
+    <div class="chart-grid" style="margin-bottom:var(--gap);">
+      <div class="card">
+        <div class="card-title">Weekly Session Frequency</div>
+        <canvas id="chart-strength-freq"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Calories Burned per Session</div>
+        <canvas id="chart-strength-cal"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Session Duration Trend (mins)</div>
+        <canvas id="chart-strength-dur"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Strength Session Log</div>
+      <div class="table-wrap">
+        <table id="strength-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Duration</th>
+              <th>Calories</th>
+              <th>Avg HR</th>
+              <th>Max HR</th>
+            </tr>
+          </thead>
+          <tbody id="strength-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SLEEP & RECOVERY TAB ══════════ -->
+  <div class="tab-panel" id="tab-recovery">
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Last Night Score</div>
+        <div class="kpi-value accent" id="rkpi-last-score">—</div>
+        <div class="kpi-sub">sleep score</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Last Night Sleep</div>
+        <div class="kpi-value green" id="rkpi-last-hrs">—</div>
+        <div class="kpi-sub">hours</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">7-Day Avg Score</div>
+        <div class="kpi-value yellow" id="rkpi-week-score">—</div>
+        <div class="kpi-sub">sleep score</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">All-Time Avg Score</div>
+        <div class="kpi-value" id="rkpi-avg-score">—</div>
+        <div class="kpi-sub">sleep score</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Sleep</div>
+        <div class="kpi-value" id="rkpi-avg-hrs">—</div>
+        <div class="kpi-sub">hrs per night</div>
+      </div>
+    </div>
+
+    <div class="chart-grid" style="margin-bottom:var(--gap);">
+      <div class="card card-full">
+        <div class="card-title">Sleep Score — Last 60 Days</div>
+        <canvas id="chart-sleep-score"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Sleep Duration — Last 60 Days</div>
+        <canvas id="chart-sleep-dur"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Body Battery — Last 30 Days</div>
+        <canvas id="chart-body-battery"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-grid" style="margin-bottom:var(--gap);">
+      <div class="card">
+        <div class="card-title">Sleep Stage Breakdown (avg)</div>
+        <canvas id="chart-sleep-stages"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Weekly Avg Sleep Score</div>
+        <canvas id="chart-sleep-weekly"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sleep Log</div>
+      <div class="table-wrap">
+        <table id="sleep-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Score</th>
+              <th>Total</th>
+              <th>Deep</th>
+              <th>REM</th>
+              <th>Light</th>
+              <th>Awake</th>
+            </tr>
+          </thead>
+          <tbody id="sleep-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TRAINING PLAN TAB ══════════ -->
+  <!-- ══════════ COACH TAB ══════════ -->
+  <div class="tab-panel" id="tab-coach">
+    <div class="card" id="coach-phase-bar" style="margin-bottom:var(--gap);"></div>
+    <div class="chart-grid" style="grid-template-columns:2fr 1fr;margin-bottom:var(--gap);">
+      <div class="card">
+        <div class="card-title">This Week's Plan</div>
+        <div id="coach-week-grid"></div>
+        <div id="coach-week-summary" style="margin-top:12px;font-size:12px;"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:var(--text2);font-weight:600;">Run days:</span>
+          <span style="font-size:11px;color:var(--z1);">Mon · Wed · Fri + Sun (long)</span>
+          <span style="font-size:11px;color:var(--text2);font-weight:600;margin-left:8px;">Strength:</span>
+          <span style="font-size:11px;color:var(--z2);">↑ Upper — Tue</span>
+          <span style="font-size:11px;color:var(--accent);">↓ Lower — Thu</span>
+          <span style="font-size:11px;color:var(--accent4);">⊕ Full Body — Sat</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Training Paces — 3:25 Goal</div>
+        <div id="coach-paces-list"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:var(--gap);">
+      <div class="card-title">24-Week Training Block</div>
+      <div id="coach-phases"></div>
+    </div>
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Nutrition Guide</div>
+        <div id="coach-nutrition"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">NYC Race Strategy</div>
+        <div id="coach-nyc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="data-note" id="data-note"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATA LAYER — tries to load garmin_data.json, falls back to sample data
+// ═══════════════════════════════════════════════════════════════════════
+let G = null;  // global data
+
+const GARMIN_DATA = {"generated_at":"2026-06-07T05:01:30.616292","kpis":{"this_week_miles":8.1,"total_runs":44,"avg_pace":"9:29","peak_week_miles":18.79,"longest_run_mi":10.02,"avg_hr":137,"vo2_max":null},"runs":[{"id":21601125576,"name":"New York Running","date":"2026-01-19","week":"2026-01-19","distance_mi":5.03,"duration_mins":42.4,"avg_pace":"8:25","avg_pace_secs":505,"avg_hr":138.0,"max_hr":150.0,"elev_gain_ft":200.0,"run_type":"Easy","calories":524.0},{"id":21639577278,"name":"Treadmill Running","date":"2026-01-23","week":"2026-01-19","distance_mi":3.03,"duration_mins":24.1,"avg_pace":"7:58","avg_pace_secs":478,"avg_hr":148.0,"max_hr":166.0,"elev_gain_ft":0,"run_type":"Recovery","calories":322.0},{"id":21757843151,"name":"Treadmill Running","date":"2026-02-01","week":"2026-01-26","distance_mi":4.03,"duration_mins":33.5,"avg_pace":"8:18","avg_pace_secs":498,"avg_hr":137.0,"max_hr":152.0,"elev_gain_ft":0,"run_type":"Easy","calories":397.0},{"id":21795733558,"name":"Treadmill Running","date":"2026-02-07","week":"2026-02-02","distance_mi":6.0,"duration_mins":55.8,"avg_pace":"9:18","avg_pace_secs":558,"avg_hr":144.0,"max_hr":157.0,"elev_gain_ft":0,"run_type":"Long Run","calories":689.0},{"id":21834653334,"name":"Treadmill Running","date":"2026-02-11","week":"2026-02-09","distance_mi":4.02,"duration_mins":31.7,"avg_pace":"7:53","avg_pace_secs":473,"avg_hr":147.0,"max_hr":169.0,"elev_gain_ft":0,"run_type":"Easy","calories":419.0},{"id":21855295623,"name":"Concord Running","date":"2026-02-13","week":"2026-02-09","distance_mi":3.02,"duration_mins":29.1,"avg_pace":"9:38","avg_pace_secs":578,"avg_hr":137.0,"max_hr":153.0,"elev_gain_ft":112.0,"run_type":"Easy","calories":350.0},{"id":21866220973,"name":"Concord Running","date":"2026-02-14","week":"2026-02-09","distance_mi":3.01,"duration_mins":28.3,"avg_pace":"9:23","avg_pace_secs":563,"avg_hr":128.0,"max_hr":143.0,"elev_gain_ft":108.0,"run_type":"Easy","calories":322.0},{"id":21928217102,"name":"Treadmill Running","date":"2026-02-20","week":"2026-02-16","distance_mi":3.1,"duration_mins":24.7,"avg_pace":"7:57","avg_pace_secs":477,"avg_hr":151.0,"max_hr":173.0,"elev_gain_ft":0,"run_type":"Recovery","calories":334.0},{"id":21954203474,"name":"Treadmill Running","date":"2026-02-22","week":"2026-02-16","distance_mi":3.0,"duration_mins":24.8,"avg_pace":"8:16","avg_pace_secs":496,"avg_hr":143.0,"max_hr":165.0,"elev_gain_ft":0,"run_type":"Recovery","calories":312.0},{"id":22000523046,"name":"Amsterdam Running","date":"2026-02-27","week":"2026-02-23","distance_mi":5.02,"duration_mins":39.9,"avg_pace":"7:56","avg_pace_secs":476,"avg_hr":158.0,"max_hr":182.0,"elev_gain_ft":79.0,"run_type":"Long Run","calories":574.0},{"id":22031440486,"name":"Treadmill Running","date":"2026-03-01","week":"2026-02-23","distance_mi":3.09,"duration_mins":25.6,"avg_pace":"8:17","avg_pace_secs":497,"avg_hr":143.0,"max_hr":166.0,"elev_gain_ft":0,"run_type":"Easy","calories":327.0},{"id":22069620673,"name":"Treadmill Running","date":"2026-03-05","week":"2026-03-02","distance_mi":3.1,"duration_mins":23.5,"avg_pace":"7:35","avg_pace_secs":455,"avg_hr":146.0,"max_hr":166.0,"elev_gain_ft":0,"run_type":"Recovery","calories":307.0},{"id":22108892748,"name":"New York Running","date":"2026-03-08","week":"2026-03-02","distance_mi":4.04,"duration_mins":36.1,"avg_pace":"8:56","avg_pace_secs":536,"avg_hr":139.0,"max_hr":149.0,"elev_gain_ft":49.0,"run_type":"Easy","calories":445.0},{"id":22164032058,"name":"Asheville Running","date":"2026-03-13","week":"2026-03-09","distance_mi":4.02,"duration_mins":31.6,"avg_pace":"7:52","avg_pace_secs":472,"avg_hr":154.0,"max_hr":175.0,"elev_gain_ft":223.0,"run_type":"Easy","calories":445.0},{"id":22174153558,"name":"Treadmill Running","date":"2026-03-14","week":"2026-03-09","distance_mi":1.75,"duration_mins":30.9,"avg_pace":"17:41","avg_pace_secs":1061,"avg_hr":83.0,"max_hr":100.0,"elev_gain_ft":0,"run_type":"Easy","calories":112.0},{"id":22197343634,"name":"Treadmill Running","date":"2026-03-16","week":"2026-03-16","distance_mi":1.77,"duration_mins":31.2,"avg_pace":"17:38","avg_pace_secs":1058,"avg_hr":105.0,"max_hr":134.0,"elev_gain_ft":0,"run_type":"Easy","calories":215.0},{"id":22208350473,"name":"Treadmill Running","date":"2026-03-17","week":"2026-03-16","distance_mi":4.03,"duration_mins":32.7,"avg_pace":"8:06","avg_pace_secs":486,"avg_hr":157.0,"max_hr":176.0,"elev_gain_ft":0,"run_type":"Tempo","calories":464.0},{"id":22354681843,"name":"Treadmill Running","date":"2026-03-18","week":"2026-03-16","distance_mi":1.76,"duration_mins":31.5,"avg_pace":"17:56","avg_pace_secs":1076,"avg_hr":94.0,"max_hr":133.0,"elev_gain_ft":0,"run_type":"Easy","calories":162.0},{"id":22354682509,"name":"Treadmill Running","date":"2026-03-19","week":"2026-03-16","distance_mi":3.51,"duration_mins":29.0,"avg_pace":"8:15","avg_pace_secs":495,"avg_hr":143.0,"max_hr":162.0,"elev_gain_ft":0,"run_type":"Easy","calories":368.0},{"id":22354683257,"name":"Treadmill Running","date":"2026-03-20","week":"2026-03-16","distance_mi":3.05,"duration_mins":30.7,"avg_pace":"10:04","avg_pace_secs":604,"avg_hr":137.0,"max_hr":148.0,"elev_gain_ft":0,"run_type":"Easy","calories":362.0},{"id":22354686395,"name":"Treadmill Running","date":"2026-03-27","week":"2026-03-23","distance_mi":3.0,"duration_mins":24.9,"avg_pace":"8:17","avg_pace_secs":497,"avg_hr":143.0,"max_hr":171.0,"elev_gain_ft":0,"run_type":"Recovery","calories":317.0},{"id":22362223630,"name":"New York Running","date":"2026-03-31","week":"2026-03-30","distance_mi":4.01,"duration_mins":42.4,"avg_pace":"10:35","avg_pace_secs":635,"avg_hr":130.0,"max_hr":139.0,"elev_gain_ft":66.0,"run_type":"Easy","calories":456.0},{"id":22382014347,"name":"New York Running","date":"2026-04-02","week":"2026-03-30","distance_mi":3.27,"duration_mins":32.0,"avg_pace":"9:47","avg_pace_secs":587,"avg_hr":129.0,"max_hr":139.0,"elev_gain_ft":52.0,"run_type":"Easy","calories":363.0},{"id":22420196247,"name":"New York Running","date":"2026-04-05","week":"2026-03-30","distance_mi":6.43,"duration_mins":61.1,"avg_pace":"9:29","avg_pace_secs":569,"avg_hr":136.0,"max_hr":152.0,"elev_gain_ft":269.0,"run_type":"Long Run","calories":712.0},{"id":22451796711,"name":"Treadmill Running","date":"2026-04-08","week":"2026-04-06","distance_mi":2.65,"duration_mins":22.4,"avg_pace":"8:27","avg_pace_secs":507,"avg_hr":130.0,"max_hr":139.0,"elev_gain_ft":0,"run_type":"Recovery","calories":237.0},{"id":22481908197,"name":"New York Running","date":"2026-04-10","week":"2026-04-06","distance_mi":4.19,"duration_mins":40.5,"avg_pace":"9:40","avg_pace_secs":580,"avg_hr":131.0,"max_hr":140.0,"elev_gain_ft":89.0,"run_type":"Easy","calories":460.0},{"id":22505747488,"name":"New York Running","date":"2026-04-12","week":"2026-04-06","distance_mi":7.28,"duration_mins":69.8,"avg_pace":"9:35","avg_pace_secs":575,"avg_hr":142.0,"max_hr":173.0,"elev_gain_ft":338.0,"run_type":"Long Run","calories":833.0},{"id":22534121231,"name":"New York Running","date":"2026-04-15","week":"2026-04-13","distance_mi":4.02,"duration_mins":37.5,"avg_pace":"9:19","avg_pace_secs":559,"avg_hr":133.0,"max_hr":152.0,"elev_gain_ft":75.0,"run_type":"Easy","calories":439.0},{"id":22564229528,"name":"New York Running","date":"2026-04-17","week":"2026-04-13","distance_mi":4.08,"duration_mins":39.2,"avg_pace":"9:36","avg_pace_secs":576,"avg_hr":130.0,"max_hr":139.0,"elev_gain_ft":49.0,"run_type":"Easy","calories":444.0},{"id":22587275486,"name":"New York Running","date":"2026-04-19","week":"2026-04-13","distance_mi":8.04,"duration_mins":70.4,"avg_pace":"8:45","avg_pace_secs":525,"avg_hr":140.0,"max_hr":161.0,"elev_gain_ft":404.0,"run_type":"Long Run","calories":874.0},{"id":22604556992,"name":"Treadmill Running","date":"2026-04-21","week":"2026-04-20","distance_mi":3.0,"duration_mins":28.6,"avg_pace":"9:32","avg_pace_secs":572,"avg_hr":127.0,"max_hr":137.0,"elev_gain_ft":0,"run_type":"Easy","calories":284.0},{"id":22683582250,"name":"New York Running","date":"2026-04-27","week":"2026-04-27","distance_mi":5.06,"duration_mins":46.5,"avg_pace":"9:10","avg_pace_secs":550,"avg_hr":133.0,"max_hr":149.0,"elev_gain_ft":72.0,"run_type":"Easy","calories":553.0},{"id":22708252806,"name":"New York Running","date":"2026-04-29","week":"2026-04-27","distance_mi":4.01,"duration_mins":38.9,"avg_pace":"9:41","avg_pace_secs":581,"avg_hr":135.0,"max_hr":145.0,"elev_gain_ft":82.0,"run_type":"Easy","calories":456.0},{"id":22796446223,"name":"Cary Running","date":"2026-05-07","week":"2026-05-04","distance_mi":3.13,"duration_mins":30.2,"avg_pace":"9:38","avg_pace_secs":578,"avg_hr":135.0,"max_hr":152.0,"elev_gain_ft":167.0,"run_type":"Easy","calories":358.0},{"id":22867915337,"name":"New York Running","date":"2026-05-13","week":"2026-05-11","distance_mi":4.02,"duration_mins":35.4,"avg_pace":"8:49","avg_pace_secs":529,"avg_hr":133.0,"max_hr":144.0,"elev_gain_ft":75.0,"run_type":"Easy","calories":430.0},{"id":22904647387,"name":"New York Running","date":"2026-05-16","week":"2026-05-11","distance_mi":8.0,"duration_mins":68.1,"avg_pace":"8:30","avg_pace_secs":510,"avg_hr":157.0,"max_hr":175.0,"elev_gain_ft":243.0,"run_type":"Long Run","calories":943.0},{"id":22922584570,"name":"New York Running","date":"2026-05-18","week":"2026-05-18","distance_mi":4.01,"duration_mins":38.1,"avg_pace":"9:29","avg_pace_secs":569,"avg_hr":134.0,"max_hr":146.0,"elev_gain_ft":62.0,"run_type":"Easy","calories":442.0},{"id":22946893423,"name":"New York Running","date":"2026-05-20","week":"2026-05-18","distance_mi":5.01,"duration_mins":41.1,"avg_pace":"8:13","avg_pace_secs":493,"avg_hr":153.0,"max_hr":172.0,"elev_gain_ft":69.0,"run_type":"Easy","calories":558.0},{"id":22971653135,"name":"New York Running","date":"2026-05-22","week":"2026-05-18","distance_mi":8.01,"duration_mins":71.3,"avg_pace":"8:53","avg_pace_secs":533,"avg_hr":142.0,"max_hr":163.0,"elev_gain_ft":331.0,"run_type":"Long Run","calories":877.0},{"id":23025543748,"name":"New York Running","date":"2026-05-26","week":"2026-05-25","distance_mi":5.01,"duration_mins":39.0,"avg_pace":"7:46","avg_pace_secs":466,"avg_hr":150.0,"max_hr":173.0,"elev_gain_ft":46.0,"run_type":"Easy","calories":535.0},{"id":23042982392,"name":"New York Running","date":"2026-05-28","week":"2026-05-25","distance_mi":3.76,"duration_mins":35.8,"avg_pace":"9:32","avg_pace_secs":572,"avg_hr":130.0,"max_hr":141.0,"elev_gain_ft":82.0,"run_type":"Easy","calories":412.0},{"id":23055610331,"name":"New York Running","date":"2026-05-29","week":"2026-05-25","distance_mi":10.02,"duration_mins":85.8,"avg_pace":"8:34","avg_pace_secs":514,"avg_hr":145.0,"max_hr":167.0,"elev_gain_ft":351.0,"run_type":"Long Run","calories":1104.0},{"id":23114798226,"name":"New York Running","date":"2026-06-03","week":"2026-06-01","distance_mi":4.07,"duration_mins":39.2,"avg_pace":"9:37","avg_pace_secs":577,"avg_hr":127.0,"max_hr":138.0,"elev_gain_ft":75.0,"run_type":"Easy","calories":439.0},{"id":23139630395,"name":"New York Running","date":"2026-06-05","week":"2026-06-01","distance_mi":4.01,"duration_mins":38.2,"avg_pace":"9:31","avg_pace_secs":571,"avg_hr":137.0,"max_hr":148.0,"elev_gain_ft":66.0,"run_type":"Easy","calories":457.0}],"weekly_summary":[{"week":"2026-01-19","miles":8.06,"runs":2,"long_run_mi":5.03,"avg_pace":"8:11","avg_pace_secs":492,"avg_hr":143},{"week":"2026-01-26","miles":4.03,"runs":1,"long_run_mi":4.03,"avg_pace":"8:18","avg_pace_secs":498,"avg_hr":137},{"week":"2026-02-02","miles":6.0,"runs":1,"long_run_mi":6.0,"avg_pace":"9:18","avg_pace_secs":558,"avg_hr":144},{"week":"2026-02-09","miles":10.05,"runs":3,"long_run_mi":4.02,"avg_pace":"8:58","avg_pace_secs":538,"avg_hr":137},{"week":"2026-02-16","miles":6.1,"runs":2,"long_run_mi":3.1,"avg_pace":"8:06","avg_pace_secs":486,"avg_hr":147},{"week":"2026-02-23","miles":8.11,"runs":2,"long_run_mi":5.02,"avg_pace":"8:06","avg_pace_secs":486,"avg_hr":150},{"week":"2026-03-02","miles":7.14,"runs":2,"long_run_mi":4.04,"avg_pace":"8:15","avg_pace_secs":496,"avg_hr":142},{"week":"2026-03-09","miles":5.77,"runs":2,"long_run_mi":4.02,"avg_pace":"12:46","avg_pace_secs":766,"avg_hr":118},{"week":"2026-03-16","miles":14.12,"runs":5,"long_run_mi":4.03,"avg_pace":"12:23","avg_pace_secs":744,"avg_hr":127},{"week":"2026-03-23","miles":3.0,"runs":1,"long_run_mi":3.0,"avg_pace":"8:17","avg_pace_secs":497,"avg_hr":143},{"week":"2026-03-30","miles":13.71,"runs":3,"long_run_mi":6.43,"avg_pace":"9:57","avg_pace_secs":597,"avg_hr":132},{"week":"2026-04-06","miles":14.12,"runs":3,"long_run_mi":7.28,"avg_pace":"9:14","avg_pace_secs":554,"avg_hr":134},{"week":"2026-04-13","miles":16.14,"runs":3,"long_run_mi":8.04,"avg_pace":"9:13","avg_pace_secs":553,"avg_hr":134},{"week":"2026-04-20","miles":3.0,"runs":1,"long_run_mi":3.0,"avg_pace":"9:32","avg_pace_secs":572,"avg_hr":127},{"week":"2026-04-27","miles":9.07,"runs":2,"long_run_mi":5.06,"avg_pace":"9:25","avg_pace_secs":566,"avg_hr":134},{"week":"2026-05-04","miles":3.13,"runs":1,"long_run_mi":3.13,"avg_pace":"9:38","avg_pace_secs":578,"avg_hr":135},{"week":"2026-05-11","miles":12.02,"runs":2,"long_run_mi":8.0,"avg_pace":"8:39","avg_pace_secs":520,"avg_hr":145},{"week":"2026-05-18","miles":17.03,"runs":3,"long_run_mi":8.01,"avg_pace":"8:51","avg_pace_secs":532,"avg_hr":143},{"week":"2026-05-25","miles":18.79,"runs":3,"long_run_mi":10.02,"avg_pace":"8:37","avg_pace_secs":517,"avg_hr":142},{"week":"2026-06-01","miles":8.08,"runs":2,"long_run_mi":4.07,"avg_pace":"9:34","avg_pace_secs":574,"avg_hr":132}],"hr_zones":[{"zone":"Zone 1 (<120)","minutes":94},{"zone":"Zone 2 (120-139)","minutes":806},{"zone":"Zone 3 (140-154)","minutes":673},{"zone":"Zone 4 (155-169)","minutes":141},{"zone":"Zone 5 (170+)","minutes":0}],"strength_sessions":[{"id":21592088738,"name":"Strength","date":"2026-01-18","week":"2026-01-12","activity_type":"Strength","type_key":"strength_training","duration_mins":72.1,"calories":326.0,"avg_hr":92.0,"max_hr":148.0},{"id":21635418923,"name":"Strength","date":"2026-01-21","week":"2026-01-19","activity_type":"Strength","type_key":"strength_training","duration_mins":62.4,"calories":301.0,"avg_hr":95.0,"max_hr":142.0},{"id":21635419132,"name":"Strength","date":"2026-01-22","week":"2026-01-19","activity_type":"Strength","type_key":"strength_training","duration_mins":58.9,"calories":217.0,"avg_hr":84.0,"max_hr":128.0},{"id":21639346734,"name":"Strength","date":"2026-01-23","week":"2026-01-19","activity_type":"Strength","type_key":"strength_training","duration_mins":40.0,"calories":152.0,"avg_hr":84.0,"max_hr":121.0},{"id":21679793932,"name":"Strength","date":"2026-01-25","week":"2026-01-19","activity_type":"Strength","type_key":"strength_training","duration_mins":89.1,"calories":456.0,"avg_hr":99.0,"max_hr":150.0},{"id":21679794374,"name":"Strength","date":"2026-01-26","week":"2026-01-26","activity_type":"Strength","type_key":"strength_training","duration_mins":52.9,"calories":252.0,"avg_hr":94.0,"max_hr":137.0},{"id":21757844045,"name":"Strength","date":"2026-02-03","week":"2026-02-02","activity_type":"Strength","type_key":"strength_training","duration_mins":63.8,"calories":266.0,"avg_hr":89.0,"max_hr":141.0},{"id":21772249497,"name":"Strength","date":"2026-02-05","week":"2026-02-02","activity_type":"Strength","type_key":"strength_training","duration_mins":52.4,"calories":201.0,"avg_hr":85.0,"max_hr":118.0},{"id":21787398068,"name":"Strength","date":"2026-02-06","week":"2026-02-02","activity_type":"Strength","type_key":"strength_training","duration_mins":50.2,"calories":212.0,"avg_hr":88.0,"max_hr":142.0},{"id":21806522037,"name":"Strength","date":"2026-02-08","week":"2026-02-02","activity_type":"Strength","type_key":"strength_training","duration_mins":72.4,"calories":344.0,"avg_hr":95.0,"max_hr":141.0},{"id":21823658458,"name":"Strength","date":"2026-02-10","week":"2026-02-09","activity_type":"Strength","type_key":"strength_training","duration_mins":58.6,"calories":287.0,"avg_hr":94.0,"max_hr":147.0},{"id":21845562021,"name":"Strength","date":"2026-02-12","week":"2026-02-09","activity_type":"Strength","type_key":"strength_training","duration_mins":62.7,"calories":340.0,"avg_hr":100.0,"max_hr":149.0},{"id":21891470928,"name":"Strength","date":"2026-02-16","week":"2026-02-16","activity_type":"Strength","type_key":"strength_training","duration_mins":56.9,"calories":279.0,"avg_hr":95.0,"max_hr":146.0},{"id":21906767806,"name":"Strength","date":"2026-02-18","week":"2026-02-16","activity_type":"Strength","type_key":"strength_training","duration_mins":56.3,"calories":302.0,"avg_hr":100.0,"max_hr":151.0},{"id":21917247086,"name":"Strength","date":"2026-02-19","week":"2026-02-16","activity_type":"Strength","type_key":"strength_training","duration_mins":55.0,"calories":293.0,"avg_hr":99.0,"max_hr":138.0},{"id":21927983632,"name":"Strength","date":"2026-02-20","week":"2026-02-16","activity_type":"Strength","type_key":"strength_training","duration_mins":18.2,"calories":65.0,"avg_hr":81.0,"max_hr":109.0},{"id":21964744933,"name":"Strength","date":"2026-02-23","week":"2026-02-23","activity_type":"Strength","type_key":"strength_training","duration_mins":74.0,"calories":341.0,"avg_hr":93.0,"max_hr":136.0},{"id":21976534342,"name":"Strength","date":"2026-02-24","week":"2026-02-23","activity_type":"Strength","type_key":"strength_training","duration_mins":67.4,"calories":375.0,"avg_hr":103.0,"max_hr":153.0},{"id":22035077439,"name":"Strength","date":"2026-03-02","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":63.6,"calories":345.0,"avg_hr":101.0,"max_hr":155.0},{"id":22053296956,"name":"Strength","date":"2026-03-03","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":58.0,"calories":251.0,"avg_hr":90.0,"max_hr":122.0},{"id":22070187113,"name":"Strength","date":"2026-03-05","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":31.0,"calories":232.0,"avg_hr":115.0,"max_hr":146.0},{"id":22086652008,"name":"Strength","date":"2026-03-06","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":94.4,"calories":490.0,"avg_hr":100.0,"max_hr":152.0},{"id":22096459512,"name":"Strength","date":"2026-03-07","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":72.2,"calories":395.0,"avg_hr":102.0,"max_hr":161.0},{"id":22109193983,"name":"Strength","date":"2026-03-08","week":"2026-03-02","activity_type":"Strength","type_key":"strength_training","duration_mins":23.4,"calories":188.0,"avg_hr":115.0,"max_hr":155.0},{"id":22113546045,"name":"Strength","date":"2026-03-09","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":55.0,"calories":272.0,"avg_hr":96.0,"max_hr":127.0},{"id":22132643492,"name":"Strength","date":"2026-03-10","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":27.3,"calories":79.0,"avg_hr":76.0,"max_hr":108.0},{"id":22137122512,"name":"Strength","date":"2026-03-11","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":43.9,"calories":242.0,"avg_hr":99.0,"max_hr":154.0},{"id":22148767647,"name":"Strength","date":"2026-03-12","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":51.1,"calories":289.0,"avg_hr":100.0,"max_hr":142.0},{"id":22164436458,"name":"Strength","date":"2026-03-13","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":28.1,"calories":158.0,"avg_hr":98.0,"max_hr":147.0},{"id":22163739761,"name":"Strength","date":"2026-03-13","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":12.9,"calories":35.0,"avg_hr":74.0,"max_hr":99.0},{"id":22174446551,"name":"Strength","date":"2026-03-14","week":"2026-03-09","activity_type":"Strength","type_key":"strength_training","duration_mins":37.3,"calories":279.0,"avg_hr":114.0,"max_hr":150.0},{"id":22197607781,"name":"Strength","date":"2026-03-16","week":"2026-03-16","activity_type":"Strength","type_key":"strength_training","duration_mins":39.6,"calories":249.0,"avg_hr":106.0,"max_hr":160.0},{"id":22208575524,"name":"Strength","date":"2026-03-17","week":"2026-03-16","activity_type":"Strength","type_key":"strength_training","duration_mins":19.8,"calories":151.0,"avg_hr":113.0,"max_hr":137.0},{"id":22354682108,"name":"Strength","date":"2026-03-18","week":"2026-03-16","activity_type":"Strength","type_key":"strength_training","duration_mins":45.9,"calories":240.0,"avg_hr":97.0,"max_hr":143.0},{"id":22354682740,"name":"Strength","date":"2026-03-19","week":"2026-03-16","activity_type":"Strength","type_key":"strength_training","duration_mins":20.9,"calories":139.0,"avg_hr":106.0,"max_hr":132.0},{"id":22354683610,"name":"Strength","date":"2026-03-20","week":"2026-03-16","activity_type":"Strength","type_key":"strength_training","duration_mins":33.4,"calories":195.0,"avg_hr":101.0,"max_hr":126.0},{"id":22354683886,"name":"Strength","date":"2026-03-27","week":"2026-03-23","activity_type":"Strength","type_key":"strength_training","duration_mins":14.3,"calories":40.0,"avg_hr":75.0,"max_hr":98.0},{"id":22354686961,"name":"Strength","date":"2026-03-28","week":"2026-03-23","activity_type":"Strength","type_key":"strength_training","duration_mins":49.8,"calories":237.0,"avg_hr":93.0,"max_hr":135.0},{"id":22354687568,"name":"Cardio","date":"2026-03-30","week":"2026-03-30","activity_type":"Cardio","type_key":"indoor_cardio","duration_mins":29.3,"calories":328.0,"avg_hr":137.0,"max_hr":180.0},{"id":22354687288,"name":"Strength","date":"2026-03-30","week":"2026-03-30","activity_type":"Strength","type_key":"strength_training","duration_mins":55.2,"calories":292.0,"avg_hr":98.0,"max_hr":153.0},{"id":22362708839,"name":"Strength","date":"2026-03-31","week":"2026-03-30","activity_type":"Strength","type_key":"strength_training","duration_mins":19.9,"calories":132.0,"avg_hr":106.0,"max_hr":145.0},{"id":22370488642,"name":"Strength","date":"2026-04-01","week":"2026-03-30","activity_type":"Strength","type_key":"strength_training","duration_mins":67.7,"calories":307.0,"avg_hr":92.0,"max_hr":134.0},{"id":22398423547,"name":"Strength","date":"2026-04-03","week":"2026-03-30","activity_type":"Strength","type_key":"strength_training","duration_mins":54.0,"calories":320.0,"avg_hr":105.0,"max_hr":150.0},{"id":22426761717,"name":"Strength","date":"2026-04-06","week":"2026-04-06","activity_type":"Strength","type_key":"strength_training","duration_mins":55.4,"calories":270.0,"avg_hr":95.0,"max_hr":135.0},{"id":22452405565,"name":"Strength","date":"2026-04-08","week":"2026-04-06","activity_type":"Strength","type_key":"strength_training","duration_mins":20.2,"calories":141.0,"avg_hr":108.0,"max_hr":147.0},{"id":22464987367,"name":"Strength","date":"2026-04-09","week":"2026-04-06","activity_type":"Strength","type_key":"strength_training","duration_mins":62.2,"calories":286.0,"avg_hr":93.0,"max_hr":144.0},{"id":22492486750,"name":"Strength","date":"2026-04-11","week":"2026-04-06","activity_type":"Strength","type_key":"strength_training","duration_mins":73.0,"calories":376.0,"avg_hr":98.0,"max_hr":152.0},{"id":22517056733,"name":"Strength","date":"2026-04-13","week":"2026-04-13","activity_type":"Strength","type_key":"strength_training","duration_mins":47.8,"calories":186.0,"avg_hr":87.0,"max_hr":117.0},{"id":22522098450,"name":"Strength","date":"2026-04-14","week":"2026-04-13","activity_type":"Strength","type_key":"strength_training","duration_mins":58.3,"calories":267.0,"avg_hr":92.0,"max_hr":141.0},{"id":22546290076,"name":"Strength","date":"2026-04-16","week":"2026-04-13","activity_type":"Strength","type_key":"strength_training","duration_mins":55.7,"calories":296.0,"avg_hr":98.0,"max_hr":148.0},{"id":22564420137,"name":"Strength","date":"2026-04-17","week":"2026-04-13","activity_type":"Strength","type_key":"strength_training","duration_mins":20.6,"calories":140.0,"avg_hr":108.0,"max_hr":141.0},{"id":22600151782,"name":"Strength","date":"2026-04-20","week":"2026-04-20","activity_type":"Strength","type_key":"strength_training","duration_mins":54.1,"calories":261.0,"avg_hr":94.0,"max_hr":146.0},{"id":22605062745,"name":"Strength","date":"2026-04-21","week":"2026-04-20","activity_type":"Strength","type_key":"strength_training","duration_mins":17.5,"calories":110.0,"avg_hr":103.0,"max_hr":129.0},{"id":22617679488,"name":"Strength","date":"2026-04-22","week":"2026-04-20","activity_type":"Strength","type_key":"strength_training","duration_mins":61.7,"calories":333.0,"avg_hr":100.0,"max_hr":136.0},{"id":22630533205,"name":"Strength","date":"2026-04-23","week":"2026-04-20","activity_type":"Strength","type_key":"strength_training","duration_mins":60.4,"calories":307.0,"avg_hr":97.0,"max_hr":141.0},{"id":22696692704,"name":"Strength","date":"2026-04-28","week":"2026-04-27","activity_type":"Strength","type_key":"strength_training","duration_mins":59.9,"calories":284.0,"avg_hr":94.0,"max_hr":135.0},{"id":22708417043,"name":"Strength","date":"2026-04-29","week":"2026-04-27","activity_type":"Strength","type_key":"strength_training","duration_mins":22.2,"calories":184.0,"avg_hr":117.0,"max_hr":148.0},{"id":22731511974,"name":"Strength","date":"2026-05-01","week":"2026-04-27","activity_type":"Strength","type_key":"strength_training","duration_mins":61.0,"calories":284.0,"avg_hr":93.0,"max_hr":155.0},{"id":22743464872,"name":"Strength","date":"2026-05-02","week":"2026-04-27","activity_type":"Strength","type_key":"strength_training","duration_mins":52.2,"calories":250.0,"avg_hr":94.0,"max_hr":128.0},{"id":22779885720,"name":"Strength","date":"2026-05-05","week":"2026-05-04","activity_type":"Strength","type_key":"strength_training","duration_mins":63.6,"calories":274.0,"avg_hr":90.0,"max_hr":140.0},{"id":22853902527,"name":"Strength","date":"2026-05-12","week":"2026-05-11","activity_type":"Strength","type_key":"strength_training","duration_mins":63.9,"calories":276.0,"avg_hr":91.0,"max_hr":123.0},{"id":22877943623,"name":"Strength","date":"2026-05-14","week":"2026-05-11","activity_type":"Strength","type_key":"strength_training","duration_mins":55.0,"calories":280.0,"avg_hr":97.0,"max_hr":146.0},{"id":22914213053,"name":"Strength","date":"2026-05-17","week":"2026-05-11","activity_type":"Strength","type_key":"strength_training","duration_mins":58.1,"calories":333.0,"avg_hr":104.0,"max_hr":154.0},{"id":22922905223,"name":"Strength","date":"2026-05-18","week":"2026-05-18","activity_type":"Strength","type_key":"strength_training","duration_mins":20.9,"calories":136.0,"avg_hr":107.0,"max_hr":133.0},{"id":22942131327,"name":"Strength","date":"2026-05-19","week":"2026-05-18","activity_type":"Strength","type_key":"strength_training","duration_mins":53.5,"calories":203.0,"avg_hr":86.0,"max_hr":120.0},{"id":22966485325,"name":"Strength","date":"2026-05-21","week":"2026-05-18","activity_type":"Strength","type_key":"strength_training","duration_mins":62.7,"calories":306.0,"avg_hr":96.0,"max_hr":141.0},{"id":23030870904,"name":"Strength","date":"2026-05-27","week":"2026-05-25","activity_type":"Strength","type_key":"strength_training","duration_mins":65.0,"calories":279.0,"avg_hr":90.0,"max_hr":132.0},{"id":23043316318,"name":"Strength","date":"2026-05-28","week":"2026-05-25","activity_type":"Strength","type_key":"strength_training","duration_mins":27.2,"calories":201.0,"avg_hr":114.0,"max_hr":155.0},{"id":23134550965,"name":"Strength","date":"2026-06-04","week":"2026-06-01","activity_type":"Strength","type_key":"strength_training","duration_mins":66.3,"calories":312.0,"avg_hr":94.0,"max_hr":142.0},{"id":23140093888,"name":"Strength","date":"2026-06-05","week":"2026-06-01","activity_type":"Strength","type_key":"strength_training","duration_mins":24.0,"calories":158.0,"avg_hr":107.0,"max_hr":138.0},{"id":23156149888,"name":"HIIT","date":"2026-06-06","week":"2026-06-01","activity_type":"HIIT","type_key":"hiit","duration_mins":56.8,"calories":581.0,"avg_hr":135.0,"max_hr":172.0}],"strength_kpis":{"total_sessions":71,"avg_duration_mins":49.4,"avg_calories":256,"this_week_sessions":3},"sleep_days":[{"date":"2026-01-18","score":56,"total_hrs":5.23,"deep_hrs":1.0,"rem_hrs":0.2,"light_hrs":4.03,"awake_mins":41.0},{"date":"2026-01-19","score":78,"total_hrs":6.57,"deep_hrs":1.23,"rem_hrs":0.87,"light_hrs":4.47,"awake_mins":12.0},{"date":"2026-01-20","score":75,"total_hrs":6.23,"deep_hrs":1.02,"rem_hrs":0.75,"light_hrs":4.47,"awake_mins":11.0},{"date":"2026-01-21","score":82,"total_hrs":6.93,"deep_hrs":0.85,"rem_hrs":1.73,"light_hrs":4.35,"awake_mins":2.0},{"date":"2026-01-22","score":84,"total_hrs":7.14,"deep_hrs":0.8,"rem_hrs":1.65,"light_hrs":4.7,"awake_mins":null},{"date":"2026-01-23","score":78,"total_hrs":6.47,"deep_hrs":1.6,"rem_hrs":1.32,"light_hrs":3.55,"awake_mins":3.0},{"date":"2026-01-24","score":31,"total_hrs":3.52,"deep_hrs":0.42,"rem_hrs":0.25,"light_hrs":2.85,"awake_mins":54.0},{"date":"2026-01-25","score":83,"total_hrs":6.7,"deep_hrs":1.4,"rem_hrs":1.22,"light_hrs":4.08,"awake_mins":null},{"date":"2026-01-26","score":68,"total_hrs":8.4,"deep_hrs":1.52,"rem_hrs":0.98,"light_hrs":5.9,"awake_mins":50.0},{"date":"2026-01-27","score":89,"total_hrs":8.95,"deep_hrs":1.88,"rem_hrs":1.32,"light_hrs":5.75,"awake_mins":15.0},{"date":"2026-01-28","score":92,"total_hrs":8.12,"deep_hrs":1.22,"rem_hrs":1.97,"light_hrs":4.95,"awake_mins":16.0},{"date":"2026-01-29","score":61,"total_hrs":4.8,"deep_hrs":1.52,"rem_hrs":0.67,"light_hrs":2.62,"awake_mins":15.0},{"date":"2026-01-30","score":47,"total_hrs":4.42,"deep_hrs":0.95,"rem_hrs":0.3,"light_hrs":3.17,"awake_mins":20.0},{"date":"2026-01-31","score":44,"total_hrs":4.57,"deep_hrs":0.82,"rem_hrs":0.28,"light_hrs":3.47,"awake_mins":22.0},{"date":"2026-02-02","score":84,"total_hrs":7.12,"deep_hrs":1.27,"rem_hrs":1.22,"light_hrs":4.65,"awake_mins":null},{"date":"2026-02-03","score":75,"total_hrs":6.63,"deep_hrs":1.18,"rem_hrs":0.97,"light_hrs":4.48,"awake_mins":3.0},{"date":"2026-02-04","score":87,"total_hrs":7.7,"deep_hrs":1.37,"rem_hrs":1.5,"light_hrs":4.83,"awake_mins":25.0},{"date":"2026-02-05","score":79,"total_hrs":6.65,"deep_hrs":1.5,"rem_hrs":1.57,"light_hrs":3.58,"awake_mins":12.0},{"date":"2026-02-06","score":60,"total_hrs":7.53,"deep_hrs":0.98,"rem_hrs":0.98,"light_hrs":5.57,"awake_mins":38.0},{"date":"2026-02-07","score":76,"total_hrs":6.33,"deep_hrs":1.17,"rem_hrs":1.12,"light_hrs":4.05,"awake_mins":3.0},{"date":"2026-02-08","score":61,"total_hrs":9.07,"deep_hrs":1.33,"rem_hrs":0.43,"light_hrs":7.3,"awake_mins":74.0},{"date":"2026-02-09","score":88,"total_hrs":8.25,"deep_hrs":1.52,"rem_hrs":1.32,"light_hrs":5.42,"awake_mins":14.0},{"date":"2026-02-10","score":81,"total_hrs":6.38,"deep_hrs":1.72,"rem_hrs":1.43,"light_hrs":3.23,"awake_mins":null},{"date":"2026-02-11","score":78,"total_hrs":6.72,"deep_hrs":1.0,"rem_hrs":1.4,"light_hrs":4.32,"awake_mins":7.0},{"date":"2026-02-12","score":86,"total_hrs":7.63,"deep_hrs":1.03,"rem_hrs":1.88,"light_hrs":4.72,"awake_mins":7.0},{"date":"2026-02-13","score":90,"total_hrs":7.38,"deep_hrs":1.68,"rem_hrs":1.75,"light_hrs":3.95,"awake_mins":null},{"date":"2026-02-14","score":80,"total_hrs":7.23,"deep_hrs":1.12,"rem_hrs":1.95,"light_hrs":4.17,"awake_mins":8.0},{"date":"2026-02-15","score":84,"total_hrs":9.18,"deep_hrs":0.88,"rem_hrs":1.63,"light_hrs":6.67,"awake_mins":2.0},{"date":"2026-02-16","score":98,"total_hrs":7.97,"deep_hrs":1.58,"rem_hrs":1.88,"light_hrs":4.52,"awake_mins":null},{"date":"2026-02-17","score":76,"total_hrs":6.42,"deep_hrs":1.17,"rem_hrs":0.87,"light_hrs":4.4,"awake_mins":31.0},{"date":"2026-02-18","score":78,"total_hrs":6.68,"deep_hrs":0.88,"rem_hrs":0.85,"light_hrs":4.95,"awake_mins":16.0},{"date":"2026-02-19","score":79,"total_hrs":6.53,"deep_hrs":1.35,"rem_hrs":1.08,"light_hrs":4.1,"awake_mins":13.0},{"date":"2026-02-20","score":85,"total_hrs":7.93,"deep_hrs":1.07,"rem_hrs":1.3,"light_hrs":5.57,"awake_mins":37.0},{"date":"2026-02-21","score":34,"total_hrs":4.53,"deep_hrs":1.62,"rem_hrs":null,"light_hrs":2.92,"awake_mins":35.0},{"date":"2026-02-22","score":30,"total_hrs":3.37,"deep_hrs":0.58,"rem_hrs":0.2,"light_hrs":2.58,"awake_mins":11.0},{"date":"2026-02-23","score":92,"total_hrs":9.95,"deep_hrs":1.95,"rem_hrs":1.83,"light_hrs":6.17,"awake_mins":11.0},{"date":"2026-02-24","score":91,"total_hrs":7.83,"deep_hrs":1.15,"rem_hrs":1.77,"light_hrs":4.92,"awake_mins":7.0},{"date":"2026-02-25","score":82,"total_hrs":6.88,"deep_hrs":1.02,"rem_hrs":1.28,"light_hrs":4.58,"awake_mins":2.0},{"date":"2026-02-26","score":30,"total_hrs":2.27,"deep_hrs":0.75,"rem_hrs":0.28,"light_hrs":1.23,"awake_mins":5.0},{"date":"2026-02-27","score":93,"total_hrs":7.53,"deep_hrs":1.67,"rem_hrs":1.93,"light_hrs":3.93,"awake_mins":null},{"date":"2026-02-28","score":85,"total_hrs":7.72,"deep_hrs":0.98,"rem_hrs":1.58,"light_hrs":5.15,"awake_mins":2.0},{"date":"2026-03-02","score":85,"total_hrs":6.48,"deep_hrs":0.97,"rem_hrs":2.0,"light_hrs":3.52,"awake_mins":null},{"date":"2026-03-03","score":82,"total_hrs":6.6,"deep_hrs":0.97,"rem_hrs":0.93,"light_hrs":4.7,"awake_mins":null},{"date":"2026-03-04","score":84,"total_hrs":6.8,"deep_hrs":1.15,"rem_hrs":1.72,"light_hrs":3.93,"awake_mins":3.0},{"date":"2026-03-05","score":74,"total_hrs":6.18,"deep_hrs":1.02,"rem_hrs":1.18,"light_hrs":3.98,"awake_mins":21.0},{"date":"2026-03-06","score":82,"total_hrs":7.13,"deep_hrs":1.37,"rem_hrs":1.5,"light_hrs":4.27,"awake_mins":7.0},{"date":"2026-03-07","score":82,"total_hrs":7.27,"deep_hrs":1.68,"rem_hrs":1.35,"light_hrs":4.23,"awake_mins":31.0},{"date":"2026-03-08","score":74,"total_hrs":6.32,"deep_hrs":0.88,"rem_hrs":1.12,"light_hrs":4.32,"awake_mins":18.0},{"date":"2026-03-09","score":70,"total_hrs":5.73,"deep_hrs":1.1,"rem_hrs":0.72,"light_hrs":3.92,"awake_mins":23.0},{"date":"2026-03-10","score":72,"total_hrs":5.87,"deep_hrs":0.97,"rem_hrs":1.92,"light_hrs":2.98,"awake_mins":17.0},{"date":"2026-03-11","score":74,"total_hrs":6.0,"deep_hrs":1.77,"rem_hrs":0.75,"light_hrs":3.48,"awake_mins":8.0},{"date":"2026-03-12","score":76,"total_hrs":6.43,"deep_hrs":1.02,"rem_hrs":1.25,"light_hrs":4.17,"awake_mins":10.0},{"date":"2026-03-13","score":85,"total_hrs":6.97,"deep_hrs":1.63,"rem_hrs":1.42,"light_hrs":3.92,"awake_mins":null},{"date":"2026-03-14","score":79,"total_hrs":7.35,"deep_hrs":2.18,"rem_hrs":1.52,"light_hrs":3.65,"awake_mins":50.0},{"date":"2026-03-15","score":86,"total_hrs":6.85,"deep_hrs":1.35,"rem_hrs":1.75,"light_hrs":3.75,"awake_mins":4.0},{"date":"2026-03-16","score":78,"total_hrs":6.56,"deep_hrs":1.25,"rem_hrs":1.47,"light_hrs":3.85,"awake_mins":13.0},{"date":"2026-03-17","score":89,"total_hrs":7.41,"deep_hrs":1.27,"rem_hrs":1.72,"light_hrs":4.43,"awake_mins":8.0},{"date":"2026-03-18","score":82,"total_hrs":6.8,"deep_hrs":1.8,"rem_hrs":0.83,"light_hrs":4.17,"awake_mins":22.0},{"date":"2026-03-20","score":77,"total_hrs":6.38,"deep_hrs":1.47,"rem_hrs":1.1,"light_hrs":3.82,"awake_mins":6.0},{"date":"2026-03-21","score":73,"total_hrs":5.88,"deep_hrs":1.85,"rem_hrs":0.83,"light_hrs":3.2,"awake_mins":20.0},{"date":"2026-03-22","score":55,"total_hrs":4.37,"deep_hrs":0.9,"rem_hrs":0.57,"light_hrs":2.9,"awake_mins":3.0},{"date":"2026-03-25","score":65,"total_hrs":5.02,"deep_hrs":0.83,"rem_hrs":0.85,"light_hrs":3.33,"awake_mins":2.0},{"date":"2026-03-30","score":90,"total_hrs":8.0,"deep_hrs":1.55,"rem_hrs":1.85,"light_hrs":4.6,"awake_mins":25.0},{"date":"2026-03-31","score":63,"total_hrs":6.68,"deep_hrs":1.07,"rem_hrs":0.37,"light_hrs":5.25,"awake_mins":41.0},{"date":"2026-04-01","score":74,"total_hrs":6.15,"deep_hrs":1.17,"rem_hrs":0.92,"light_hrs":4.07,"awake_mins":27.0},{"date":"2026-04-02","score":86,"total_hrs":7.38,"deep_hrs":1.08,"rem_hrs":1.33,"light_hrs":4.97,"awake_mins":null},{"date":"2026-04-03","score":29,"total_hrs":4.42,"deep_hrs":0.83,"rem_hrs":null,"light_hrs":3.58,"awake_mins":123.0},{"date":"2026-04-04","score":71,"total_hrs":8.3,"deep_hrs":0.77,"rem_hrs":0.98,"light_hrs":6.55,"awake_mins":18.0},{"date":"2026-04-05","score":58,"total_hrs":6.59,"deep_hrs":0.12,"rem_hrs":0.57,"light_hrs":5.92,"awake_mins":7.0},{"date":"2026-04-06","score":81,"total_hrs":7.17,"deep_hrs":0.9,"rem_hrs":1.23,"light_hrs":5.05,"awake_mins":null},{"date":"2026-04-07","score":90,"total_hrs":7.88,"deep_hrs":1.68,"rem_hrs":1.98,"light_hrs":4.22,"awake_mins":null},{"date":"2026-04-08","score":80,"total_hrs":6.6,"deep_hrs":1.58,"rem_hrs":1.65,"light_hrs":3.37,"awake_mins":null},{"date":"2026-04-09","score":78,"total_hrs":6.13,"deep_hrs":1.63,"rem_hrs":1.4,"light_hrs":3.1,"awake_mins":null},{"date":"2026-04-10","score":79,"total_hrs":6.93,"deep_hrs":1.45,"rem_hrs":1.13,"light_hrs":4.35,"awake_mins":17.0},{"date":"2026-04-11","score":76,"total_hrs":6.33,"deep_hrs":1.05,"rem_hrs":1.83,"light_hrs":3.45,"awake_mins":9.0},{"date":"2026-04-13","score":81,"total_hrs":6.9,"deep_hrs":1.25,"rem_hrs":1.1,"light_hrs":4.55,"awake_mins":15.0},{"date":"2026-04-14","score":86,"total_hrs":6.36,"deep_hrs":1.42,"rem_hrs":1.42,"light_hrs":3.53,"awake_mins":11.0},{"date":"2026-04-15","score":82,"total_hrs":6.68,"deep_hrs":1.65,"rem_hrs":1.58,"light_hrs":3.45,"awake_mins":6.0},{"date":"2026-04-16","score":86,"total_hrs":7.08,"deep_hrs":1.58,"rem_hrs":1.53,"light_hrs":3.97,"awake_mins":null},{"date":"2026-04-17","score":44,"total_hrs":5.23,"deep_hrs":0.75,"rem_hrs":0.5,"light_hrs":3.98,"awake_mins":98.0},{"date":"2026-04-18","score":79,"total_hrs":6.3,"deep_hrs":1.77,"rem_hrs":1.07,"light_hrs":3.47,"awake_mins":null},{"date":"2026-04-19","score":67,"total_hrs":8.05,"deep_hrs":0.48,"rem_hrs":0.63,"light_hrs":6.93,"awake_mins":42.0},{"date":"2026-04-20","score":85,"total_hrs":7.82,"deep_hrs":1.18,"rem_hrs":1.65,"light_hrs":5.0,"awake_mins":20.0},{"date":"2026-04-21","score":77,"total_hrs":6.22,"deep_hrs":1.6,"rem_hrs":1.15,"light_hrs":3.47,"awake_mins":9.0},{"date":"2026-04-22","score":79,"total_hrs":6.27,"deep_hrs":1.28,"rem_hrs":1.22,"light_hrs":3.77,"awake_mins":null},{"date":"2026-04-23","score":63,"total_hrs":5.27,"deep_hrs":0.62,"rem_hrs":0.92,"light_hrs":3.73,"awake_mins":31.0},{"date":"2026-04-24","score":86,"total_hrs":7.22,"deep_hrs":1.42,"rem_hrs":1.67,"light_hrs":4.13,"awake_mins":9.0},{"date":"2026-04-25","score":82,"total_hrs":7.85,"deep_hrs":0.75,"rem_hrs":1.38,"light_hrs":5.72,"awake_mins":15.0},{"date":"2026-04-26","score":62,"total_hrs":4.82,"deep_hrs":1.08,"rem_hrs":0.88,"light_hrs":2.85,"awake_mins":null},{"date":"2026-04-27","score":33,"total_hrs":4.42,"deep_hrs":1.02,"rem_hrs":null,"light_hrs":3.4,"awake_mins":46.0},{"date":"2026-04-28","score":81,"total_hrs":6.68,"deep_hrs":1.25,"rem_hrs":1.03,"light_hrs":4.4,"awake_mins":7.0},{"date":"2026-04-29","score":85,"total_hrs":7.52,"deep_hrs":0.62,"rem_hrs":1.35,"light_hrs":5.55,"awake_mins":14.0},{"date":"2026-04-30","score":66,"total_hrs":6.47,"deep_hrs":0.75,"rem_hrs":0.45,"light_hrs":5.27,"awake_mins":11.0},{"date":"2026-05-01","score":92,"total_hrs":8.07,"deep_hrs":1.07,"rem_hrs":1.83,"light_hrs":5.17,"awake_mins":7.0},{"date":"2026-05-02","score":82,"total_hrs":10.13,"deep_hrs":1.45,"rem_hrs":1.57,"light_hrs":7.12,"awake_mins":37.0},{"date":"2026-05-03","score":84,"total_hrs":8.82,"deep_hrs":1.05,"rem_hrs":1.83,"light_hrs":5.93,"awake_mins":35.0},{"date":"2026-05-04","score":85,"total_hrs":7.27,"deep_hrs":1.02,"rem_hrs":1.57,"light_hrs":4.68,"awake_mins":28.0},{"date":"2026-05-05","score":86,"total_hrs":7.95,"deep_hrs":1.0,"rem_hrs":1.1,"light_hrs":5.85,"awake_mins":16.0},{"date":"2026-05-06","score":58,"total_hrs":4.42,"deep_hrs":0.97,"rem_hrs":0.78,"light_hrs":2.67,"awake_mins":18.0},{"date":"2026-05-07","score":71,"total_hrs":5.5,"deep_hrs":1.38,"rem_hrs":1.1,"light_hrs":3.02,"awake_mins":15.0},{"date":"2026-05-08","score":63,"total_hrs":4.97,"deep_hrs":1.2,"rem_hrs":0.95,"light_hrs":2.82,"awake_mins":9.0},{"date":"2026-05-09","score":65,"total_hrs":5.25,"deep_hrs":0.93,"rem_hrs":1.08,"light_hrs":3.23,"awake_mins":23.0},{"date":"2026-05-10","score":35,"total_hrs":3.12,"deep_hrs":1.38,"rem_hrs":0.1,"light_hrs":1.63,"awake_mins":31.0},{"date":"2026-05-11","score":89,"total_hrs":8.62,"deep_hrs":1.53,"rem_hrs":1.33,"light_hrs":5.75,"awake_mins":9.0},{"date":"2026-05-12","score":82,"total_hrs":6.73,"deep_hrs":1.53,"rem_hrs":1.18,"light_hrs":4.02,"awake_mins":6.0},{"date":"2026-05-13","score":91,"total_hrs":7.6,"deep_hrs":1.52,"rem_hrs":1.8,"light_hrs":4.28,"awake_mins":4.0},{"date":"2026-05-14","score":85,"total_hrs":7.48,"deep_hrs":1.28,"rem_hrs":1.1,"light_hrs":5.1,"awake_mins":2.0},{"date":"2026-05-15","score":87,"total_hrs":7.63,"deep_hrs":1.25,"rem_hrs":2.05,"light_hrs":4.33,"awake_mins":22.0},{"date":"2026-05-16","score":37,"total_hrs":6.08,"deep_hrs":0.73,"rem_hrs":0.1,"light_hrs":5.25,"awake_mins":130.0},{"date":"2026-05-17","score":73,"total_hrs":9.4,"deep_hrs":1.15,"rem_hrs":1.53,"light_hrs":6.72,"awake_mins":74.0},{"date":"2026-05-18","score":72,"total_hrs":6.39,"deep_hrs":0.87,"rem_hrs":0.72,"light_hrs":4.82,"awake_mins":24.0},{"date":"2026-05-19","score":80,"total_hrs":7.25,"deep_hrs":1.53,"rem_hrs":1.6,"light_hrs":4.12,"awake_mins":32.0},{"date":"2026-05-20","score":81,"total_hrs":6.57,"deep_hrs":1.7,"rem_hrs":1.22,"light_hrs":3.65,"awake_mins":null},{"date":"2026-05-21","score":68,"total_hrs":5.77,"deep_hrs":1.27,"rem_hrs":0.58,"light_hrs":3.92,"awake_mins":35.0},{"date":"2026-05-22","score":48,"total_hrs":5.72,"deep_hrs":0.7,"rem_hrs":0.83,"light_hrs":4.18,"awake_mins":98.0},{"date":"2026-05-23","score":65,"total_hrs":5.35,"deep_hrs":1.48,"rem_hrs":0.67,"light_hrs":3.2,"awake_mins":4.0},{"date":"2026-05-24","score":26,"total_hrs":3.25,"deep_hrs":0.45,"rem_hrs":null,"light_hrs":2.8,"awake_mins":3.0},{"date":"2026-05-25","score":62,"total_hrs":4.77,"deep_hrs":1.18,"rem_hrs":0.85,"light_hrs":2.73,"awake_mins":null},{"date":"2026-05-26","score":82,"total_hrs":7.23,"deep_hrs":1.73,"rem_hrs":0.8,"light_hrs":4.7,"awake_mins":8.0},{"date":"2026-05-27","score":77,"total_hrs":6.33,"deep_hrs":1.3,"rem_hrs":0.92,"light_hrs":4.12,"awake_mins":8.0},{"date":"2026-05-28","score":71,"total_hrs":5.93,"deep_hrs":0.88,"rem_hrs":0.95,"light_hrs":4.1,"awake_mins":2.0},{"date":"2026-05-29","score":77,"total_hrs":6.58,"deep_hrs":1.78,"rem_hrs":1.12,"light_hrs":3.68,"awake_mins":15.0},{"date":"2026-05-30","score":78,"total_hrs":6.35,"deep_hrs":1.5,"rem_hrs":1.7,"light_hrs":3.15,"awake_mins":null},{"date":"2026-06-01","score":88,"total_hrs":10.83,"deep_hrs":1.75,"rem_hrs":2.12,"light_hrs":6.97,"awake_mins":25.0},{"date":"2026-06-02","score":85,"total_hrs":8.08,"deep_hrs":1.93,"rem_hrs":1.32,"light_hrs":4.83,"awake_mins":16.0},{"date":"2026-06-03","score":77,"total_hrs":6.73,"deep_hrs":1.25,"rem_hrs":1.02,"light_hrs":4.47,"awake_mins":19.0},{"date":"2026-06-04","score":93,"total_hrs":7.93,"deep_hrs":1.72,"rem_hrs":2.02,"light_hrs":4.2,"awake_mins":null},{"date":"2026-06-05","score":89,"total_hrs":7.82,"deep_hrs":1.02,"rem_hrs":1.7,"light_hrs":5.1,"awake_mins":14.0},{"date":"2026-06-06","score":80,"total_hrs":6.77,"deep_hrs":0.87,"rem_hrs":1.13,"light_hrs":4.77,"awake_mins":null}],"recovery_days":[{"date":"2026-01-18","charged":69,"drained":67,"end_level":69},{"date":"2026-01-19","charged":75,"drained":60,"end_level":75},{"date":"2026-01-20","charged":73,"drained":74,"end_level":73},{"date":"2026-01-21","charged":74,"drained":66,"end_level":74},{"date":"2026-01-22","charged":69,"drained":78,"end_level":69},{"date":"2026-01-23","charged":70,"drained":82,"end_level":70},{"date":"2026-01-24","charged":7,"drained":10,"end_level":7},{"date":"2026-01-25","charged":86,"drained":70,"end_level":86},{"date":"2026-01-26","charged":62,"drained":57,"end_level":62},{"date":"2026-01-27","charged":82,"drained":60,"end_level":82},{"date":"2026-01-28","charged":59,"drained":76,"end_level":59},{"date":"2026-01-29","charged":50,"drained":77,"end_level":50},{"date":"2026-01-30","charged":22,"drained":22,"end_level":22},{"date":"2026-01-31","charged":11,"drained":38,"end_level":11},{"date":"2026-02-01","charged":47,"drained":80,"end_level":47},{"date":"2026-02-02","charged":60,"drained":82,"end_level":60},{"date":"2026-02-03","charged":63,"drained":63,"end_level":63},{"date":"2026-02-04","charged":87,"drained":76,"end_level":87},{"date":"2026-02-05","charged":67,"drained":88,"end_level":67},{"date":"2026-02-06","charged":44,"drained":42,"end_level":44},{"date":"2026-02-07","charged":73,"drained":69,"end_level":73},{"date":"2026-02-08","charged":62,"drained":48,"end_level":62},{"date":"2026-02-09","charged":73,"drained":61,"end_level":73},{"date":"2026-02-10","charged":61,"drained":86,"end_level":61},{"date":"2026-02-11","charged":76,"drained":59,"end_level":76},{"date":"2026-02-12","charged":76,"drained":73,"end_level":76},{"date":"2026-02-13","charged":65,"drained":84,"end_level":65},{"date":"2026-02-14","charged":74,"drained":62,"end_level":74},{"date":"2026-02-15","charged":79,"drained":67,"end_level":79},{"date":"2026-02-16","charged":59,"drained":75,"end_level":59},{"date":"2026-02-17","charged":64,"drained":63,"end_level":64},{"date":"2026-02-18","charged":72,"drained":78,"end_level":72},{"date":"2026-02-19","charged":87,"drained":70,"end_level":87},{"date":"2026-02-20","charged":65,"drained":70,"end_level":65},{"date":"2026-02-21","charged":1,"drained":35,"end_level":1},{"date":"2026-02-22","charged":44,"drained":50,"end_level":44},{"date":"2026-02-23","charged":87,"drained":72,"end_level":87},{"date":"2026-02-24","charged":73,"drained":73,"end_level":73},{"date":"2026-02-25","charged":95,"drained":66,"end_level":95},{"date":"2026-02-26","charged":25,"drained":57,"end_level":25},{"date":"2026-02-27","charged":86,"drained":87,"end_level":86},{"date":"2026-02-28","charged":73,"drained":30,"end_level":73},{"date":"2026-03-01","charged":66,"drained":84,"end_level":66},{"date":"2026-03-02","charged":63,"drained":71,"end_level":63},{"date":"2026-03-03","charged":84,"drained":19,"end_level":84},{"date":"2026-03-04","charged":57,"drained":81,"end_level":57},{"date":"2026-03-05","charged":72,"drained":73,"end_level":72},{"date":"2026-03-06","charged":81,"drained":77,"end_level":81},{"date":"2026-03-07","charged":77,"drained":74,"end_level":77},{"date":"2026-03-08","charged":71,"drained":78,"end_level":71},{"date":"2026-03-09","charged":75,"drained":71,"end_level":75},{"date":"2026-03-10","charged":73,"drained":76,"end_level":73},{"date":"2026-03-11","charged":79,"drained":78,"end_level":79},{"date":"2026-03-12","charged":80,"drained":73,"end_level":80},{"date":"2026-03-13","charged":78,"drained":85,"end_level":78},{"date":"2026-03-14","charged":76,"drained":77,"end_level":76},{"date":"2026-03-15","charged":77,"drained":77,"end_level":77},{"date":"2026-03-16","charged":81,"drained":77,"end_level":81},{"date":"2026-03-17","charged":78,"drained":83,"end_level":78},{"date":"2026-03-18","charged":80,"drained":57,"end_level":80},{"date":"2026-03-19","charged":0,"drained":70,"end_level":0},{"date":"2026-03-20","charged":74,"drained":82,"end_level":74},{"date":"2026-03-21","charged":80,"drained":57,"end_level":80},{"date":"2026-03-22","charged":53,"drained":7,"end_level":53},{"date":"2026-03-23","charged":null,"drained":null,"end_level":null},{"date":"2026-03-24","charged":7,"drained":18,"end_level":7},{"date":"2026-03-25","charged":62,"drained":58,"end_level":62},{"date":"2026-03-26","charged":7,"drained":36,"end_level":7},{"date":"2026-03-27","charged":0,"drained":23,"end_level":0},{"date":"2026-03-28","charged":0,"drained":9,"end_level":0},{"date":"2026-03-29","charged":10,"drained":39,"end_level":10},{"date":"2026-03-30","charged":71,"drained":88,"end_level":71},{"date":"2026-03-31","charged":82,"drained":78,"end_level":82},{"date":"2026-04-01","charged":80,"drained":65,"end_level":80},{"date":"2026-04-02","charged":65,"drained":87,"end_level":65},{"date":"2026-04-03","charged":22,"drained":30,"end_level":22},{"date":"2026-04-04","charged":45,"drained":3,"end_level":45},{"date":"2026-04-05","charged":45,"drained":56,"end_level":45},{"date":"2026-04-06","charged":47,"drained":79,"end_level":47},{"date":"2026-04-07","charged":81,"drained":73,"end_level":81},{"date":"2026-04-08","charged":71,"drained":77,"end_level":71},{"date":"2026-04-09","charged":74,"drained":80,"end_level":74},{"date":"2026-04-10","charged":79,"drained":66,"end_level":79},{"date":"2026-04-11","charged":56,"drained":29,"end_level":56},{"date":"2026-04-12","charged":2,"drained":57,"end_level":2},{"date":"2026-04-13","charged":84,"drained":68,"end_level":84},{"date":"2026-04-14","charged":75,"drained":72,"end_level":75},{"date":"2026-04-15","charged":72,"drained":77,"end_level":72},{"date":"2026-04-16","charged":75,"drained":90,"end_level":75},{"date":"2026-04-17","charged":48,"drained":50,"end_level":48},{"date":"2026-04-18","charged":86,"drained":88,"end_level":86},{"date":"2026-04-19","charged":62,"drained":45,"end_level":62},{"date":"2026-04-20","charged":79,"drained":77,"end_level":79},{"date":"2026-04-21","charged":75,"drained":81,"end_level":75},{"date":"2026-04-22","charged":79,"drained":86,"end_level":79},{"date":"2026-04-23","charged":74,"drained":40,"end_level":74},{"date":"2026-04-24","charged":72,"drained":74,"end_level":72},{"date":"2026-04-25","charged":62,"drained":35,"end_level":62},{"date":"2026-04-26","charged":44,"drained":9,"end_level":44},{"date":"2026-04-27","charged":31,"drained":66,"end_level":31},{"date":"2026-04-28","charged":77,"drained":79,"end_level":77},{"date":"2026-04-29","charged":80,"drained":90,"end_level":80},{"date":"2026-04-30","charged":54,"drained":46,"end_level":54},{"date":"2026-05-01","charged":83,"drained":72,"end_level":83},{"date":"2026-05-02","charged":73,"drained":74,"end_level":73},{"date":"2026-05-03","charged":78,"drained":68,"end_level":78},{"date":"2026-05-04","charged":66,"drained":65,"end_level":66},{"date":"2026-05-05","charged":65,"drained":70,"end_level":65},{"date":"2026-05-06","charged":60,"drained":77,"end_level":60},{"date":"2026-05-07","charged":76,"drained":57,"end_level":76},{"date":"2026-05-08","charged":63,"drained":46,"end_level":63},{"date":"2026-05-09","charged":59,"drained":6,"end_level":59},{"date":"2026-05-10","charged":25,"drained":29,"end_level":25},{"date":"2026-05-11","charged":37,"drained":69,"end_level":37},{"date":"2026-05-12","charged":75,"drained":71,"end_level":75},{"date":"2026-05-13","charged":68,"drained":73,"end_level":68},{"date":"2026-05-14","charged":67,"drained":74,"end_level":67},{"date":"2026-05-15","charged":76,"drained":75,"end_level":76},{"date":"2026-05-16","charged":40,"drained":43,"end_level":40},{"date":"2026-05-17","charged":86,"drained":65,"end_level":86},{"date":"2026-05-18","charged":59,"drained":73,"end_level":59},{"date":"2026-05-19","charged":69,"drained":73,"end_level":69},{"date":"2026-05-20","charged":73,"drained":80,"end_level":73},{"date":"2026-05-21","charged":75,"drained":73,"end_level":75},{"date":"2026-05-22","charged":61,"drained":71,"end_level":61},{"date":"2026-05-23","charged":33,"drained":11,"end_level":33},{"date":"2026-05-24","charged":23,"drained":49,"end_level":23},{"date":"2026-05-25","charged":69,"drained":65,"end_level":69},{"date":"2026-05-26","charged":64,"drained":88,"end_level":64},{"date":"2026-05-27","charged":79,"drained":73,"end_level":79},{"date":"2026-05-28","charged":69,"drained":73,"end_level":69},{"date":"2026-05-29","charged":80,"drained":85,"end_level":80},{"date":"2026-05-30","charged":60,"drained":25,"end_level":60},{"date":"2026-05-31","charged":26,"drained":43,"end_level":26},{"date":"2026-06-01","charged":61,"drained":71,"end_level":61},{"date":"2026-06-02","charged":72,"drained":63,"end_level":72},{"date":"2026-06-03","charged":61,"drained":75,"end_level":61},{"date":"2026-06-04","charged":71,"drained":71,"end_level":71},{"date":"2026-06-05","charged":73,"drained":66,"end_level":73},{"date":"2026-06-06","charged":72,"drained":68,"end_level":72},{"date":"2026-06-07","charged":9,"drained":0,"end_level":9}],"sleep_kpis":{"avg_score":74,"avg_hrs":6.7,"last_score":80,"last_total_hrs":6.77,"this_week_avg_score":85}};
+
+async function loadData() {
+  G = GARMIN_DATA;
+  document.getElementById('data-note').innerHTML =
+    `Real Garmin data · Generated ${new Date(G.generated_at).toLocaleString()}`;
+  init();
+  // Register service worker for PWA / offline support
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAMPLE DATA GENERATOR
+// ═══════════════════════════════════════════════════════════════════════
+function generateSampleData() {
+  const runs = [];
+  const today = new Date();
+  const runTypes = ['Easy','Easy','Easy','Tempo','Long Run','Recovery','Speed/Interval'];
+  const names = ['Morning Run','Evening Run','Lunch Run','Tempo Run','Long Run','Recovery Run','Track Workout'];
+
+  // Generate 18 weeks of sample data
+  for (let w = 17; w >= 0; w--) {
+    const weekBase = new Date(today);
+    weekBase.setDate(weekBase.getDate() - w * 7);
+
+    // 4-5 runs per week
+    const numRuns = 4 + (w % 2);
+    const runDays = [0, 2, 3, 5, 6].slice(0, numRuns);
+
+    runDays.forEach((dayOffset, i) => {
+      const d = new Date(weekBase);
+      d.setDate(d.getDate() + dayOffset);
+      if (d > today) return;
+
+      const isLong = dayOffset === 6;
+      const baseWeekMiles = 20 + (17 - w) * 1.5;
+      const dist = isLong
+        ? Math.min(20, 10 + (17 - w) * 0.55)
+        : 4 + Math.random() * 4;
+      const distRounded = Math.round(dist * 10) / 10;
+
+      const rtype = isLong ? 'Long Run' : runTypes[i % runTypes.length];
+      const basePaceSecs = rtype === 'Tempo' ? 490 : rtype === 'Speed/Interval' ? 470 : 570;
+      const paceSecs = basePaceSecs + Math.round((Math.random() - 0.5) * 40);
+      const paceStr = `${Math.floor(paceSecs/60)}:${String(paceSecs%60).padStart(2,'0')}`;
+      const hr = rtype === 'Easy' ? 130 + Math.round(Math.random()*10)
+               : rtype === 'Tempo' ? 158 + Math.round(Math.random()*8)
+               : rtype === 'Long Run' ? 140 + Math.round(Math.random()*10)
+               : 168 + Math.round(Math.random()*5);
+
+      const dateStr = d.toISOString().slice(0,10);
+      const weekStart = new Date(d);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+
+      runs.push({
+        id: runs.length + 1,
+        name: names[i % names.length],
+        date: dateStr,
+        week: weekStart.toISOString().slice(0,10),
+        distance_mi: distRounded,
+        duration_mins: Math.round(distRounded * paceSecs / 60),
+        avg_pace: paceStr,
+        avg_pace_secs: paceSecs,
+        avg_hr: hr,
+        max_hr: hr + 15 + Math.round(Math.random()*10),
+        elev_gain_ft: Math.round(Math.random() * 300),
+        run_type: rtype,
+        calories: Math.round(distRounded * 100 + Math.random() * 50),
+      });
+    });
+  }
+  runs.sort((a,b) => a.date.localeCompare(b.date));
+
+  // Build weekly summary
+  const weekMap = {};
+  runs.forEach(r => {
+    if (!weekMap[r.week]) weekMap[r.week] = {miles:0, runs:0, long:0, paces:[], hrs:[]};
+    weekMap[r.week].miles = Math.round((weekMap[r.week].miles + r.distance_mi)*10)/10;
+    weekMap[r.week].runs++;
+    weekMap[r.week].long = Math.max(weekMap[r.week].long, r.distance_mi);
+    if (r.avg_pace_secs) weekMap[r.week].paces.push(r.avg_pace_secs);
+    if (r.avg_hr) weekMap[r.week].hrs.push(r.avg_hr);
+  });
+
+  const weekly = Object.keys(weekMap).sort().map(w => {
+    const d = weekMap[w];
+    const ap = d.paces.length ? Math.round(d.paces.reduce((a,b)=>a+b)/d.paces.length) : null;
+    const ah = d.hrs.length ? Math.round(d.hrs.reduce((a,b)=>a+b)/d.hrs.length) : null;
+    return {
+      week: w,
+      miles: d.miles,
+      runs: d.runs,
+      long_run_mi: d.long,
+      avg_pace: ap ? `${Math.floor(ap/60)}:${String(ap%60).padStart(2,'0')}` : null,
+      avg_pace_secs: ap,
+      avg_hr: ah,
+    };
+  });
+
+  // KPIs
+  const todayStr = today.toISOString().slice(0,10);
+  const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekAgoStr = weekAgo.toISOString().slice(0,10);
+  const thisWeekRuns = runs.filter(r => r.date >= weekAgoStr);
+  const twMiles = Math.round(thisWeekRuns.reduce((s,r) => s+r.distance_mi, 0)*10)/10;
+  const allPaces = runs.map(r=>r.avg_pace_secs).filter(Boolean);
+  const avgPaceSecs = allPaces.length ? Math.round(allPaces.reduce((a,b)=>a+b)/allPaces.length) : null;
+  const avgPace = avgPaceSecs ? `${Math.floor(avgPaceSecs/60)}:${String(avgPaceSecs%60).padStart(2,'0')}` : null;
+  const peakWeek = weekly.reduce((best, w) => w.miles > (best?.miles||0) ? w : best, null);
+  const longestRun = runs.reduce((best, r) => r.distance_mi > (best?.distance_mi||0) ? r : best, null);
+  const allHrs = runs.map(r=>r.avg_hr).filter(Boolean);
+  const avgHr = allHrs.length ? Math.round(allHrs.reduce((a,b)=>a+b)/allHrs.length) : null;
+
+  // HR zones
+  const zoneMap = {'Zone 1 (<120)':0,'Zone 2 (120-139)':0,'Zone 3 (140-154)':0,'Zone 4 (155-169)':0,'Zone 5 (170+)':0};
+  runs.forEach(r => {
+    const hr = r.avg_hr, m = r.duration_mins || 0;
+    if (!hr) return;
+    if (hr < 120) zoneMap['Zone 1 (<120)'] += m;
+    else if (hr < 140) zoneMap['Zone 2 (120-139)'] += m;
+    else if (hr < 155) zoneMap['Zone 3 (140-154)'] += m;
+    else if (hr < 170) zoneMap['Zone 4 (155-169)'] += m;
+    else zoneMap['Zone 5 (170+)'] += m;
+  });
+  const hr_zones = Object.entries(zoneMap).map(([zone,minutes]) => ({zone, minutes: Math.round(minutes)}));
+
+  return {
+    generated_at: new Date().toISOString(),
+    kpis: {
+      this_week_miles: twMiles,
+      total_runs: runs.length,
+      avg_pace: avgPace,
+      peak_week_miles: peakWeek?.miles,
+      longest_run_mi: longestRun?.distance_mi,
+      avg_hr: avgHr,
+      vo2_max: 48.5,
+    },
+    runs,
+    weekly_summary: weekly,
+    hr_zones,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT & RENDER
+// ═══════════════════════════════════════════════════════════════════════
+const COLORS = ['#5b7fff','#51cf66','#fcc419','#ff6b6b','#ff922b','#74c0fc','#cc5de8'];
+
+const RACE_DATE = new Date('2026-11-01T00:00:00');
+
+function init() {
+  renderHeader();
+  renderKPIs();
+  renderCharts();
+  renderActivityLog();
+  renderStrengthTab();
+  renderRecoveryTab();
+  renderCoachTab();
+  renderDailyBrief();
+  renderNightlyPrep();
+  applyTimeVisibility();
+  setInterval(applyTimeVisibility, 60000); // re-check every minute
+
+  // Pre-set Training Plan tab to match coaching plan
+  document.getElementById('race-date').value = '2026-11-01';
+  document.getElementById('goal-time').value = 'sub325';
+  const peakMiles = G.kpis.peak_week_miles || 16;
+  const curMilesEl = document.getElementById('current-miles');
+  curMilesEl.value = Math.round(peakMiles / 5) * 5; // round to nearest 5
+  generatePlan();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DAILY BRIEF ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+function applyTimeVisibility() {
+  const hour = new Date().getHours(); // 0–23
+  const isEvening = hour >= 16; // 4pm–11:59pm
+  document.getElementById('daily-brief').style.display  = isEvening ? 'none' : 'block';
+  document.getElementById('nightly-prep').style.display = isEvening ? 'block' : 'none';
+}
+
+function renderNightlyPrep() {
+  const el = document.getElementById('nightly-prep');
+  if (!el) return;
+
+  // ── Tomorrow's plan ───────────────────────────────────────────────────
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDow = tomorrow.getDay(); // 0=Sun
+  const tomorrowPlanIdx = tomorrowDow === 0 ? 6 : tomorrowDow - 1; // Mon=0..Sun=6
+
+  const planStart = new Date(COACH_PLAN_START);
+  const msPerWeek = 7 * 24 * 3600 * 1000;
+  const currentWi = Math.min(
+    Math.max(0, Math.floor((Date.now() - planStart.getTime()) / msPerWeek)),
+    COACH_WEEKS.length - 1
+  );
+  const tomorrowPlan = COACH_WEEKS[currentWi]?.days?.[tomorrowPlanIdx] || null;
+
+  const tomorrowType = tomorrowPlan?.type || 'rest';
+  const tomorrowMi   = tomorrowPlan?.mi   || 0;
+  const strengthTmrw = STRENGTH_BY_DAY[tomorrowPlanIdx];
+
+  // ── Recent sleep trend ────────────────────────────────────────────────
+  const sleep = G.sleep_days || [];
+  const last7sleep = sleep.slice(-7);
+  const avgScore7 = last7sleep.filter(s => s.score != null).length
+    ? Math.round(last7sleep.filter(s => s.score != null).reduce((a,s)=>a+s.score,0) /
+        last7sleep.filter(s => s.score != null).length)
+    : null;
+  const avgHrs7 = last7sleep.length
+    ? +(last7sleep.reduce((a,s)=>a+s.total_hrs,0) / last7sleep.length).toFixed(1)
+    : null;
+  const lastNight = sleep[sleep.length - 1] || null;
+
+  // ── Bedtime & sleep target ────────────────────────────────────────────
+  // Long run / quality day → target 8.5h; strength → 8h; easy/rest → 7.5h
+  const sleepTarget = tomorrowType === 'long' ? 8.5
+    : (tomorrowType === 'tempo' || tomorrowType === 'interval' || tomorrowType === 'quality') ? 8.0
+    : 7.5;
+
+  // Assume 6:30am wake-up → work back
+  const wakeHour = 6.5;
+  const bedtimeHour = wakeHour - sleepTarget;
+  const bedtimeFormatted = (() => {
+    const h = Math.floor(((bedtimeHour % 24) + 24) % 24);
+    const m = Math.round((bedtimeHour - Math.floor(bedtimeHour)) * 60);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+  })();
+
+  // Sleep quality nudge based on recent trend
+  const sleepNudge = avgScore7 != null && avgScore7 < 65
+    ? 'Your 7-day avg is low — prioritize an earlier bedtime tonight'
+    : avgHrs7 != null && avgHrs7 < 7
+    ? `Averaging only ${avgHrs7}h lately — aim for ${sleepTarget}h tonight`
+    : `On track — protect ${sleepTarget}h tonight`;
+
+  // ── Nutrition ─────────────────────────────────────────────────────────
+  const nutrition = (() => {
+    if (tomorrowType === 'long') return {
+      value: 'Carb focus',
+      detail: `Eat a larger dinner tonight — pasta, rice, or potatoes. Target ~3g carbs/lb body weight. Avoid high-fiber foods (broccoli, beans) that can cause GI issues on the run.`,
+    };
+    if (tomorrowType === 'tempo' || tomorrowType === 'interval' || tomorrowType === 'quality') return {
+      value: 'Moderate carbs + protein',
+      detail: `Balanced dinner with complex carbs (rice, sweet potato) and lean protein (chicken, fish). Don't go to bed hungry — top up with a small carb snack if needed.`,
+    };
+    if (tomorrowType === 'rest' && strengthTmrw) return {
+      value: 'Protein + healthy fats',
+      detail: `Prioritize protein tonight (0.8–1g per lb body weight). Eggs, chicken, Greek yogurt. Add healthy fats like avocado or olive oil — no need to carb load before a strength session.`,
+    };
+    if (tomorrowType === 'easy' || tomorrowType === 'mp') return {
+      value: 'Balanced dinner',
+      detail: `Normal balanced meal — moderate carbs, lean protein, vegetables. No need to carb load for an easy run. Avoid alcohol and heavy/greasy foods.`,
+    };
+    return {
+      value: 'Light & clean',
+      detail: `Rest day tomorrow — lighter dinner is fine. Focus on nutrient density: vegetables, lean protein, healthy fats. Avoid ultra-processed foods.`,
+    };
+  })();
+
+  // ── Hydration ─────────────────────────────────────────────────────────
+  const hydration = (() => {
+    if (tomorrowType === 'long') return {
+      value: '16–20 oz before bed',
+      detail: `Drink 16–20 oz of water before bed. Consider adding electrolytes (sodium, potassium). Check urine color — aim for pale yellow by morning.`,
+    };
+    if (tomorrowType === 'tempo' || tomorrowType === 'interval') return {
+      value: '12–16 oz before bed',
+      detail: `Drink 12–16 oz tonight. Avoid alcohol — it fragments sleep and increases dehydration. Morning: drink 8 oz immediately upon waking.`,
+    };
+    return {
+      value: '8–12 oz before bed',
+      detail: `Stay consistently hydrated throughout the day. Avoid large amounts right before bed to prevent waking up at night.`,
+    };
+  })();
+
+  // ── Evening routine ───────────────────────────────────────────────────
+  const routine = (() => {
+    if (tomorrowType === 'long') return {
+      value: '10 min mobility',
+      detail: `Hip flexors, calves, hamstrings — foam roll anything tight. Lay out your gear tonight: shoes, watch, fuel, water bottle. Set two alarms.`,
+    };
+    if (tomorrowType === 'tempo' || tomorrowType === 'interval') return {
+      value: 'Light stretch + gear prep',
+      detail: `5–10 min gentle stretching. No deep tissue work — save legs for tomorrow. Lay out your gear. Review your pace targets so they're top of mind.`,
+    };
+    if (tomorrowType === 'rest' && strengthTmrw) return {
+      value: 'Foam roll + stretch',
+      detail: `10–15 min foam rolling and stretching — great night for this since no run tomorrow. Focus on upper body if it's an upper body session, lower if lower.`,
+    };
+    return {
+      value: 'Light mobility',
+      detail: `5–10 min of easy stretching or yoga. Wind down screens 30–60 min before bed. Keep your bedroom cool (65–68°F) for optimal sleep quality.`,
+    };
+  })();
+
+  // ── Alcohol / screens ─────────────────────────────────────────────────
+  const windDown = (() => {
+    if (tomorrowType === 'long' || tomorrowType === 'tempo' || tomorrowType === 'interval') return {
+      value: 'No alcohol tonight',
+      detail: `Alcohol before a hard workout fragments deep sleep and impairs muscle repair. Cut screens 45–60 min before bed. Room temp 65–68°F.`,
+    };
+    return {
+      value: 'Screens off 30 min early',
+      detail: `Dim lights and cut screens 30 min before bed. Blue light suppresses melatonin and delays sleep onset by 30–60 min.`,
+    };
+  })();
+
+  // ── Tomorrow label ────────────────────────────────────────────────────
+  const tomorrowLabel = tomorrowType === 'long'     ? `Long Run — ${tomorrowMi} mi`
+    : tomorrowType === 'tempo'    ? `Tempo Run — ${tomorrowMi} mi`
+    : tomorrowType === 'interval' ? `Speed Work — ${tomorrowMi} mi`
+    : tomorrowType === 'mp'       ? `MP Run — ${tomorrowMi} mi`
+    : tomorrowType === 'easy'     ? `Easy Run — ${tomorrowMi} mi`
+    : tomorrowType === 'race'     ? `RACE DAY`
+    : strengthTmrw                ? `${strengthTmrw.label} Strength`
+    : `Rest Day`;
+
+  const tomorrowColor = tomorrowType === 'long'     ? 'var(--accent)'
+    : tomorrowType === 'tempo'    ? 'var(--z4)'
+    : tomorrowType === 'interval' ? 'var(--z5)'
+    : tomorrowType === 'easy'     ? 'var(--z1)'
+    : tomorrowType === 'mp'       ? 'var(--accent)'
+    : tomorrowType === 'race'     ? 'var(--accent4)'
+    : strengthTmrw                ? 'var(--z2)'
+    : 'var(--text2)';
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const items = [
+    {
+      icon: '😴',
+      label: 'Sleep Target',
+      value: `${sleepTarget}h — in bed by ${bedtimeFormatted}`,
+      detail: sleepNudge,
+    },
+    {
+      icon: '🍝',
+      label: 'Nutrition',
+      value: nutrition.value,
+      detail: nutrition.detail,
+    },
+    {
+      icon: '💧',
+      label: 'Hydration',
+      value: hydration.value,
+      detail: hydration.detail,
+    },
+    {
+      icon: '🧘',
+      label: 'Evening Routine',
+      value: routine.value,
+      detail: routine.detail,
+    },
+    {
+      icon: '📵',
+      label: 'Wind Down',
+      value: windDown.value,
+      detail: windDown.detail,
+    },
+  ];
+
+  el.innerHTML = `
+    <div class="prep-wrap">
+      <div class="prep-header">
+        <div class="prep-header-left">
+          <div class="prep-moon">🌙</div>
+          <div>
+            <div class="prep-title">Tonight's Prep</div>
+            <div class="prep-subtitle">Set yourself up for tomorrow</div>
+          </div>
+        </div>
+        <div class="prep-tomorrow-badge" style="color:${tomorrowColor};">
+          ${dayNames[tomorrowDow]} · ${tomorrowLabel}
+        </div>
+      </div>
+      <div class="prep-grid">
+        ${items.map(item => `
+          <div class="prep-item">
+            <div class="prep-item-icon">${item.icon}</div>
+            <div class="prep-item-label">${item.label}</div>
+            <div class="prep-item-value">${item.value}</div>
+            <div class="prep-item-detail">${item.detail}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderDailyBrief() {
+  const el = document.getElementById('daily-brief');
+  if (!el) return;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dow = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
+
+  // ── Pull today's signals ──────────────────────────────────────────────
+  const sleepDays = G.sleep_days || [];
+  const recoveryDays = G.recovery_days || [];
+
+  const todaySleep    = sleepDays.find(s => s.date === todayStr)
+                     || sleepDays[sleepDays.length - 1] || null;
+  const todayRecovery = recoveryDays.find(r => r.date === todayStr)
+                     || recoveryDays[recoveryDays.length - 1] || null;
+
+  const sleepScore  = todaySleep?.score ?? null;
+  const sleepHrs    = todaySleep?.total_hrs ?? null;
+  const battery     = todayRecovery?.charged ?? null;
+
+  // ── What happened this week so far ───────────────────────────────────
+  const weekMon = (() => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
+    return d.toISOString().slice(0,10);
+  })();
+
+  const runsThisWeek     = (G.runs || []).filter(r => r.week >= weekMon || r.date >= weekMon);
+  const strengthThisWeek = (G.strength_sessions || []).filter(s => s.date >= weekMon);
+  const milesThisWeek    = runsThisWeek.reduce((a, r) => a + r.distance_mi, 0);
+  const ranToday         = runsThisWeek.some(r => r.date === todayStr);
+  const liftedToday      = strengthThisWeek.some(s => s.date === todayStr);
+  const hadHardRunThisWeek = runsThisWeek.some(r =>
+    r.run_type === 'Tempo' || r.run_type === 'Speed/Interval');
+
+  // Yesterday's run (for recovery context)
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yStr = yesterday.toISOString().slice(0,10);
+  const ranYesterday = (G.runs || []).some(r => r.date === yStr);
+  const hardRunYesterday = (G.runs || []).some(r =>
+    r.date === yStr && (r.run_type === 'Tempo' || r.run_type === 'Speed/Interval'));
+
+  // ── Current coach week plan ───────────────────────────────────────────
+  const planStart = new Date(COACH_PLAN_START);
+  const msPerWeek = 7 * 24 * 3600 * 1000;
+  const currentWi = Math.min(
+    Math.max(0, Math.floor((Date.now() - planStart.getTime()) / msPerWeek)),
+    COACH_WEEKS.length - 1
+  );
+  const planWeek  = COACH_WEEKS[currentWi];
+  // days[] is Mon-indexed (0=Mon … 6=Sun); dow is 0=Sun
+  const planDayIdx = dow === 0 ? 6 : dow - 1;
+  const planDay    = planWeek?.days?.[planDayIdx] || null;
+
+  // ── Readiness score (0–100) ───────────────────────────────────────────
+  // Weighted blend: sleep score 40%, body battery 35%, week load 25%
+  const peakMiles  = G.kpis?.peak_week_miles || 20;
+  const planTarget = planWeek?.target || 20;
+  const loadPct    = Math.min(milesThisWeek / planTarget, 1.3); // >1 = over-plan
+  const loadScore  = loadPct <= 0.6 ? 100         // well under — fresh
+                   : loadPct <= 0.85 ? 85
+                   : loadPct <= 1.0  ? 70
+                   : loadPct <= 1.15 ? 50
+                   : 30;                           // significantly over
+
+  const sleepPts   = sleepScore != null ? sleepScore : 70;
+  const battPts    = battery    != null ? Math.min(battery * 1.05, 100) : 70;
+  const readiness  = Math.round(sleepPts * 0.40 + battPts * 0.35 + loadScore * 0.25);
+
+  // ── Readiness tier ────────────────────────────────────────────────────
+  const tier = readiness >= 80 ? 'green'
+             : readiness >= 60 ? 'yellow'
+             : 'red';
+  const tierColor = tier === 'green' ? 'var(--accent3)'
+                  : tier === 'yellow' ? 'var(--accent4)'
+                  : 'var(--accent2)';
+
+  // ── Day-of-week plan vs. readiness logic ─────────────────────────────
+  // What the schedule calls for today
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName = dayNames[dow];
+
+  let scheduledType = 'rest'; // default
+  if (dow === 1 || dow === 3 || dow === 5) scheduledType = 'easy';  // Mon/Wed/Fri
+  if (dow === 0) scheduledType = 'long';                            // Sun = long run
+  if (dow === 2) scheduledType = 'strength';                        // Tue = Upper Body
+  if (dow === 4) scheduledType = 'strength';                        // Thu = Lower Body
+  if (dow === 6) scheduledType = 'strength';                        // Sat = Full Body
+  // Wed is quality run (tempo/interval later in plan)
+  if (dow === 3 && currentWi >= 8) scheduledType = 'quality';
+
+  // Override based on readiness
+  let verdictType  = scheduledType;
+  let modded       = false;
+  if (scheduledType === 'easy' || scheduledType === 'quality' || scheduledType === 'long') {
+    if (tier === 'red') { verdictType = 'recovery_run'; modded = true; }
+    else if (tier === 'yellow' && scheduledType === 'quality') { verdictType = 'easy'; modded = true; }
+    else if (tier === 'yellow' && scheduledType === 'long') { verdictType = 'long_shortened'; modded = true; }
+  }
+  if (ranToday)    { verdictType = 'done_run';      modded = false; }
+  if (liftedToday && scheduledType === 'strength') { verdictType = 'done_strength'; modded = false; }
+
+  // ── Workout prescription ──────────────────────────────────────────────
+  const prescriptions = {
+    easy: {
+      title: 'Easy Run',
+      desc:  `${planDay?.mi || 4}–${(planDay?.mi || 4) + 1} miles at easy effort. HR 135–145, fully conversational. ${hardRunYesterday ? 'You ran hard yesterday — keep it genuinely easy today.' : 'Solid aerobic base work.'}`,
+      pace:  planDay?.target || '8:45–9:15 /mi',
+      blocks: [
+        { label: 'Distance', val: `${planDay?.mi || 4} mi` },
+        { label: 'Pace', val: planDay?.target || '8:45–9:15' },
+        { label: 'HR Target', val: '135–145 bpm' },
+        { label: 'Feel', val: 'Conversational' },
+      ]
+    },
+    quality: {
+      title: 'Quality Run — Tempo',
+      desc:  `Readiness is solid. A ${planDay?.mi || 6}-mile run with a 20–30 min tempo block at 7:05–7:15/mi in the middle. Warm up 1.5 mi, tempo, cool down 1.5 mi.`,
+      pace:  '7:05–7:15 /mi (tempo block)',
+      blocks: [
+        { label: 'Total Distance', val: `${planDay?.mi || 6} mi` },
+        { label: 'Tempo Pace', val: '7:05–7:15' },
+        { label: 'Warm-up', val: '1.5 mi easy' },
+        { label: 'Cool-down', val: '1.5 mi easy' },
+      ]
+    },
+    long: {
+      title: 'Long Run',
+      desc:  `${planDay?.mi || 10} miles at a fully conversational long-run pace. Fueling every 45 min. Start slow — first 2 miles should feel boring easy.`,
+      pace:  planDay?.target || '8:45–9:15 /mi',
+      blocks: [
+        { label: 'Distance', val: `${planDay?.mi || 10} mi` },
+        { label: 'Pace', val: planDay?.target || '8:45–9:15' },
+        { label: 'Fuel every', val: '45 min' },
+        { label: 'HR Target', val: '135–148 bpm' },
+      ]
+    },
+    long_shortened: {
+      title: 'Long Run — Cut Short',
+      desc:  `Your readiness is moderate. Do the long run but cap it at ${Math.round((planDay?.mi || 10) * 0.75)} miles instead of ${planDay?.mi || 10}. Keep the effort easy — no heroics.`,
+      pace:  planDay?.target || '8:45–9:15 /mi',
+      blocks: [
+        { label: 'Distance', val: `${Math.round((planDay?.mi || 10) * 0.75)} mi (cut)` },
+        { label: 'Pace', val: planDay?.target || '8:45–9:15' },
+        { label: 'HR Cap', val: '148 bpm max' },
+        { label: 'Stop if', val: 'HR won\'t come down' },
+      ]
+    },
+    recovery_run: {
+      title: 'Recovery Run Only',
+      desc:  `Low readiness today (${readiness}/100). Replace the planned workout with 20–30 min very easy running — HR ≤ 130, jog pace. Better to under-do it than dig a hole.`,
+      pace:  '10:00–10:30 /mi',
+      blocks: [
+        { label: 'Duration', val: '20–30 min' },
+        { label: 'Pace', val: '10:00+ /mi' },
+        { label: 'HR Cap', val: '130 bpm' },
+        { label: 'Effort', val: 'Should feel easy' },
+      ]
+    },
+    strength: {
+      title: dow === 2 ? 'Upper Body Strength' : dow === 4 ? 'Lower Body Strength' : 'Full Body Strength',
+      desc:  dow === 2
+        ? 'Upper body focus: push/pull compound lifts. Bench, rows, overhead press, pull-ups. Keep rest periods 60–90 sec.'
+        : dow === 4
+        ? 'Lower body focus: squats, RDLs, lunges, single-leg work. This directly supports your running economy and injury prevention.'
+        : 'Full body session: integrate upper + lower. Prioritize compound movements and core stability work.',
+      pace:  null,
+      blocks: [
+        { label: 'Duration', val: `${G.strength_kpis?.avg_duration_mins || 50} min` },
+        { label: 'Focus', val: dow === 2 ? 'Upper Body' : dow === 4 ? 'Lower Body' : 'Full Body' },
+        { label: 'Intensity', val: tier === 'red' ? 'Light — deload' : 'Moderate–hard' },
+        { label: 'Core work', val: 'Finish with 10 min' },
+      ]
+    },
+    rest: {
+      title: 'Rest Day',
+      desc:  'Full rest today. Walk, stretch, foam roll. Adaptations happen during recovery — protect it.',
+      pace:  null,
+      blocks: [
+        { label: 'Run', val: 'No' },
+        { label: 'Mobility', val: '15–20 min' },
+        { label: 'Hydration', val: '3+ L water' },
+        { label: 'Sleep target', val: '7.5–9 hrs tonight' },
+      ]
+    },
+    done_run: {
+      title: 'Already logged a run today',
+      desc:  ranYesterday
+        ? `${milesThisWeek.toFixed(1)} miles in the bank this week. Rest up, hydrate, and recover well for tomorrow.`
+        : `Nice work — ${milesThisWeek.toFixed(1)} miles this week so far. If you feel good and this was meant to be a double, you can add a short easy 20–30 min shakeout.`,
+      pace:  null,
+      blocks: [
+        { label: 'This week', val: `${milesThisWeek.toFixed(1)} mi` },
+        { label: 'Plan target', val: `${planTarget} mi/wk` },
+        { label: 'Recovery', val: 'Hydrate & stretch' },
+        { label: 'Tomorrow', val: planWeek?.days?.[(planDayIdx+1)%7]?.type === 'rest' ? 'Rest' : 'Run' },
+      ]
+    },
+    done_strength: {
+      title: 'Strength session logged today',
+      desc:  `Good work. ${milesThisWeek.toFixed(1)} miles run this week. Focus on protein and sleep to maximize adaptation from today's lift.`,
+      pace:  null,
+      blocks: [
+        { label: 'Sessions this week', val: strengthThisWeek.length },
+        { label: 'Protein goal', val: '0.8–1g / lb BW' },
+        { label: 'Sleep tonight', val: '7.5–9 hrs' },
+        { label: 'Tomorrow', val: 'Easy run day' },
+      ]
+    },
+  };
+
+  const rx = prescriptions[verdictType] || prescriptions.rest;
+
+  // ── Headline ──────────────────────────────────────────────────────────
+  const headline = tier === 'green'
+    ? (verdictType === 'done_run' || verdictType === 'done_strength' ? 'Well done today.' : 'You\'re ready to train hard.')
+    : tier === 'yellow'
+    ? (verdictType === 'done_run' ? 'Already trained today.' : 'Train, but keep it controlled.')
+    : 'Your body needs easier today.';
+
+  const subtitle = (() => {
+    const parts = [];
+    if (sleepScore != null) parts.push(`Sleep score ${sleepScore} (${sleepHrs?.toFixed(1)}h)`);
+    if (battery    != null) parts.push(`Body battery ${battery}`);
+    if (milesThisWeek > 0)  parts.push(`${milesThisWeek.toFixed(1)} mi this week`);
+    if (modded) parts.push(`Plan adjusted from ${scheduledType} based on readiness`);
+    return parts.join(' · ');
+  })();
+
+  // ── Signals row ───────────────────────────────────────────────────────
+  const sleepLabel = sleepScore == null ? '—'
+    : sleepScore >= 80 ? 'Good' : sleepScore >= 60 ? 'Fair' : 'Poor';
+  const sleepColor = scoreColor(sleepScore);
+
+  const battLabel = battery == null ? '—'
+    : battery >= 75 ? 'High' : battery >= 50 ? 'Medium' : 'Low';
+  const battColor = battery == null ? 'var(--text2)'
+    : battery >= 75 ? 'var(--accent3)' : battery >= 50 ? 'var(--accent4)' : 'var(--accent2)';
+
+  const loadColor = loadScore >= 80 ? 'var(--accent3)'
+    : loadScore >= 55 ? 'var(--accent4)' : 'var(--accent2)';
+  const loadLabel = loadPct <= 0.6 ? 'Fresh' : loadPct <= 0.85 ? 'Building'
+    : loadPct <= 1.0 ? 'On Plan' : 'Over Plan';
+
+  const weekRunsDesc = runsThisWeek.length === 0 ? 'No runs yet'
+    : `${runsThisWeek.length} run${runsThisWeek.length>1?'s':''}, ${milesThisWeek.toFixed(1)} mi`;
+
+  const signals = [
+    {
+      label: 'Sleep Score',
+      value: sleepScore != null ? `${sleepScore} — ${sleepLabel}` : '—',
+      note:  sleepHrs   != null ? `${sleepHrs.toFixed(1)}h · Deep ${todaySleep?.deep_hrs ?? '?'}h · REM ${todaySleep?.rem_hrs ?? '?'}h` : 'No data',
+      color: sleepColor,
+    },
+    {
+      label: 'Body Battery',
+      value: battery != null ? `${battery} — ${battLabel}` : '—',
+      note:  todayRecovery ? `Charged ${todayRecovery.charged ?? '?'} · Drained ${todayRecovery.drained ?? '?'}` : 'No data',
+      color: battColor,
+    },
+    {
+      label: 'Week Load',
+      value: `${milesThisWeek.toFixed(1)} / ${planTarget} mi — ${loadLabel}`,
+      note:  `${weekRunsDesc} · ${strengthThisWeek.length} strength session${strengthThisWeek.length!==1?'s':''}`,
+      color: loadColor,
+    },
+    {
+      label: "Today's Plan",
+      value: `${todayName} · Week ${currentWi + 1}`,
+      note:  planWeek?.focus || planWeek?.phase || '—',
+      color: 'var(--accent)',
+    },
+  ];
+
+  // ── Blocks HTML ───────────────────────────────────────────────────────
+  const blocksHtml = rx.blocks.map(b =>
+    `<div class="brief-block">
+      <strong style="color:${tierColor}">${b.label}</strong>
+      ${b.val}
+    </div>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="brief-wrap">
+      <div class="brief-hero">
+        <div class="brief-readiness" style="color:${tierColor};">
+          <div class="rnum">${readiness}</div>
+          <div class="rlbl">Readiness</div>
+        </div>
+        <div class="brief-main">
+          <div class="brief-verdict">${headline}</div>
+          <div class="brief-subtitle">${subtitle}</div>
+        </div>
+      </div>
+
+      <div class="brief-body">
+        ${signals.map(s => `
+          <div class="brief-signal">
+            <div class="brief-signal-label">${s.label}</div>
+            <div class="brief-signal-value" style="color:${s.color}">${s.value}</div>
+            <div class="brief-signal-note">${s.note}</div>
+          </div>`).join('')}
+      </div>
+
+      <div class="brief-workout">
+        <div style="flex:1;min-width:220px;">
+          <div class="brief-workout-label">Today's Workout</div>
+          <div class="brief-workout-title" style="color:${tierColor}">${rx.title}</div>
+          <div class="brief-workout-desc">${rx.desc}</div>
+          <div class="brief-blocks">${blocksHtml}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderHeader() {
+  const kpis = G.kpis;
+  document.getElementById('vo2-badge').textContent = kpis.vo2_max ? kpis.vo2_max : '—';
+  document.getElementById('data-date-badge').textContent =
+    new Date(G.generated_at).toLocaleDateString();
+
+  // Coach plan context
+  const wi = coachWeekIndex();
+  const week = COACH_WEEKS[wi];
+  const weeksLeft = Math.round((RACE_DATE - new Date()) / (7 * 86400000));
+  document.getElementById('header-phase').textContent = week ? week.phase : '—';
+  document.getElementById('header-week').textContent = wi + 1;
+  document.getElementById('header-weeks-left').textContent = Math.max(0, weeksLeft);
+}
+
+function renderKPIs() {
+  const k = G.kpis;
+  setText('kpi-week-miles', k.this_week_miles ?? '—');
+  setText('kpi-longest', k.longest_run_mi ?? '—');
+  setText('kpi-pace', k.avg_pace ?? '—');
+  setText('kpi-peak', k.peak_week_miles ?? '—');
+  setText('kpi-total-runs', k.total_runs ?? '—');
+  setText('kpi-hr', k.avg_hr ?? '—');
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function renderCharts() {
+  const weekly = G.weekly_summary;
+  const weekLabels = weekly.map(w => {
+    const d = new Date(w.week);
+    return `${d.toLocaleString('default',{month:'short'})} ${d.getDate()}`;
+  });
+
+  // ── Weekly mileage bar chart ──
+  new Chart(document.getElementById('chart-weekly-miles').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: weekLabels,
+      datasets: [{
+        label: 'Miles',
+        data: weekly.map(w => w.miles),
+        backgroundColor: weekly.map(w => w.miles === G.kpis.peak_week_miles ? '#fcc419cc' : '#5b7fffcc'),
+        borderRadius: 4,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v+'mi' } },
+        x: { grid: { display: false } }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+
+  // ── Pace trend ──
+  const paceData = weekly.map(w => w.avg_pace_secs ? +(w.avg_pace_secs/60).toFixed(2) : null);
+  new Chart(document.getElementById('chart-pace').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: weekLabels,
+      datasets: [{
+        label: 'Avg Pace (decimal min/mi)',
+        data: paceData,
+        borderColor: '#51cf66',
+        backgroundColor: '#51cf6620',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        spanGaps: true,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: {
+          reverse: true,
+          ticks: {
+            callback: v => {
+              const m = Math.floor(v); const s = Math.round((v-m)*60);
+              return `${m}:${String(s).padStart(2,'0')}`;
+            }
+          }
+        },
+        x: { grid: { display: false } }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+
+  // ── HR zones doughnut ──
+  const zones = G.hr_zones;
+  new Chart(document.getElementById('chart-hr-zones').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: zones.map(z => z.zone),
+      datasets: [{
+        data: zones.map(z => z.minutes),
+        backgroundColor: ['#51cf66cc','#74c0fccc','#fcc419cc','#ff922bcc','#ff6b6bcc'],
+        borderColor: '#1a1d27',
+        borderWidth: 2,
+      }]
+    },
+    options: chartOpts({
+      cutout: '55%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#8b90a7', boxWidth: 12, padding: 10, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Math.round(ctx.parsed)} min` } }
+      }
+    })
+  });
+
+  // ── Run type breakdown ──
+  const typeCounts = {};
+  G.runs.forEach(r => { typeCounts[r.run_type] = (typeCounts[r.run_type]||0) + 1; });
+  const typeKeys = Object.keys(typeCounts);
+  new Chart(document.getElementById('chart-run-types').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: typeKeys,
+      datasets: [{
+        data: typeKeys.map(k => typeCounts[k]),
+        backgroundColor: COLORS.map(c => c+'cc'),
+        borderColor: '#1a1d27',
+        borderWidth: 2,
+      }]
+    },
+    options: chartOpts({
+      cutout: '55%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#8b90a7', boxWidth: 12, padding: 10, font: { size: 11 } } },
+      }
+    })
+  });
+
+  // ── Long run progression ──
+  const longRuns = G.runs.filter(r => r.run_type === 'Long Run');
+  new Chart(document.getElementById('chart-long-runs').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: longRuns.map(r => r.date),
+      datasets: [{
+        label: 'Long Run (mi)',
+        data: longRuns.map(r => r.distance_mi),
+        borderColor: '#5b7fff',
+        backgroundColor: '#5b7fff25',
+        fill: true,
+        tension: 0.2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#8b90a7', maxTicksLimit: 8 } },
+        y: { beginAtZero: false, ticks: { callback: v => v+'mi' } }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+}
+
+function chartOpts(extra = {}) {
+  const base = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: { labels: { color: '#8b90a7' } },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: { ticks: { color: '#8b90a7' }, grid: { color: '#2e3250' } },
+      y: { ticks: { color: '#8b90a7' }, grid: { color: '#2e3250' } }
+    }
+  };
+  return deepMerge(base, extra);
+}
+
+function deepMerge(target, source) {
+  const out = Object.assign({}, target);
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      out[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ACTIVITY LOG
+// ═══════════════════════════════════════════════════════════════════════
+let sortCol = 0, sortDir = -1;
+function renderActivityLog() {
+  const sorted = [...G.runs].sort((a, b) => {
+    const vals = [
+      [a.date, b.date],
+      [a.name, b.name],
+      [a.run_type, b.run_type],
+      [a.distance_mi, b.distance_mi],
+      [a.duration_mins, b.duration_mins],
+      [a.avg_pace_secs, b.avg_pace_secs],
+      [a.avg_hr, b.avg_hr],
+      [a.elev_gain_ft, b.elev_gain_ft],
+    ][sortCol];
+    const [av, bv] = vals;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return av < bv ? sortDir : av > bv ? -sortDir : 0;
+  }).reverse(); // show newest first by default
+
+  const tbody = document.getElementById('activity-tbody');
+  tbody.innerHTML = sorted.slice(0, 200).map(r => {
+    const dur = r.duration_mins ? `${Math.floor(r.duration_mins/60)}h ${Math.round(r.duration_mins%60)}m` : '—';
+    const typeClass = r.run_type.replace('/','-').replace(' Run','').replace('Speed-Interval','Speed');
+    return `<tr>
+      <td>${r.date}</td>
+      <td>${r.name}</td>
+      <td><span class="run-type ${typeClass}">${r.run_type}</span></td>
+      <td>${r.distance_mi} mi</td>
+      <td>${dur}</td>
+      <td>${r.avg_pace || '—'} /mi</td>
+      <td>${r.avg_hr ? r.avg_hr+' bpm' : '—'}</td>
+      <td>${r.elev_gain_ft ? r.elev_gain_ft+' ft' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderActivityLog();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STRENGTH TAB
+// ═══════════════════════════════════════════════════════════════════════
+let strengthChartsRendered = false;
+
+function renderStrengthTab() {
+  const sessions = (G.strength_sessions || []).slice().reverse(); // newest first
+  const sk = G.strength_kpis || {};
+
+  // KPIs
+  setText('skpi-week', sk.this_week_sessions ?? '—');
+  setText('skpi-total', sk.total_sessions ?? '—');
+  setText('skpi-duration', sk.avg_duration_mins ?? '—');
+  setText('skpi-calories', sk.avg_calories ?? '—');
+
+  // Table
+  const tbody = document.getElementById('strength-tbody');
+  if (!sessions.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:24px;">
+      No strength data yet — run <code>python3 fetch_garmin.py</code> to sync.
+    </td></tr>`;
+  } else {
+    tbody.innerHTML = sessions.map(s => {
+      const dur = s.duration_mins
+        ? `${Math.floor(s.duration_mins/60) > 0 ? Math.floor(s.duration_mins/60)+'h ' : ''}${Math.round(s.duration_mins%60)}m`
+        : '—';
+      const typeColor = s.activity_type === 'Strength' ? 'var(--z2)' :
+                        s.activity_type === 'HIIT'     ? 'var(--z5)' :
+                        s.activity_type === 'Cardio'   ? 'var(--z3)' : 'var(--text2)';
+      return `<tr>
+        <td>${s.date}</td>
+        <td>${s.name}</td>
+        <td><span style="color:${typeColor};font-weight:600;">${s.activity_type}</span></td>
+        <td>${dur}</td>
+        <td>${s.calories ? s.calories + ' kcal' : '—'}</td>
+        <td>${s.avg_hr ? s.avg_hr + ' bpm' : '—'}</td>
+        <td>${s.max_hr ? s.max_hr + ' bpm' : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Charts — only build once (canvases can't be re-init'd)
+  if (strengthChartsRendered || !sessions.length) return;
+  strengthChartsRendered = true;
+
+  // Group by week for frequency chart
+  const weekMap = {};
+  sessions.forEach(s => {
+    weekMap[s.week] = (weekMap[s.week] || 0) + 1;
+  });
+  const weekKeys = Object.keys(weekMap).sort();
+  const weekLabels = weekKeys.map(w => {
+    const d = new Date(w);
+    return `${d.toLocaleString('default',{month:'short'})} ${d.getDate()}`;
+  });
+
+  new Chart(document.getElementById('chart-strength-freq').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: weekLabels,
+      datasets: [{
+        label: 'Sessions',
+        data: weekKeys.map(w => weekMap[w]),
+        backgroundColor: '#74c0fccc',
+        borderRadius: 4,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        x: { grid: { display: false } }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+
+  // Calories per session (chronological = sessions reversed back)
+  const chrono = [...sessions].reverse();
+  const calLabels = chrono.map(s => s.date);
+  new Chart(document.getElementById('chart-strength-cal').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: calLabels,
+      datasets: [{
+        label: 'Calories',
+        data: chrono.map(s => s.calories || null),
+        backgroundColor: '#fcc419cc',
+        borderRadius: 4,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v+' kcal' } },
+        x: { display: false }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { title: (items) => chrono[items[0].dataIndex]?.name || '' } }
+      }
+    })
+  });
+
+  // Duration trend
+  new Chart(document.getElementById('chart-strength-dur').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: calLabels,
+      datasets: [{
+        label: 'Duration (mins)',
+        data: chrono.map(s => s.duration_mins || null),
+        borderColor: '#51cf66',
+        backgroundColor: '#51cf6620',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        spanGaps: true,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v+'m' } },
+        x: { display: false }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { title: (items) => chrono[items[0].dataIndex]?.name || '' } }
+      }
+    })
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TRAINING PLAN GENERATOR
+// ═══════════════════════════════════════════════════════════════════════
+const PLAN_TEMPLATES = {
+  higdon: {
+    name: 'Hal Higdon Novice',
+    // 18-week structure: [Mon,Tue,Wed,Thu,Fri,Sat,Sun] as {type, dist_factor}
+    // dist_factor is relative to weekly total; 'long' uses separate scale
+    weeks: [
+      { total: 1.0, long: 6,  types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.0, long: 7,  types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.05,long: 8,  types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 1.0, long: 9,  types: ['rest','easy','easy','easy','rest','easy','long'] },  // cutback
+      { total: 1.1, long: 10, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 1.1, long: 11, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.1, long: 12, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 0.9, long: 10, types: ['rest','easy','easy','easy','rest','easy','long'] },  // cutback
+      { total: 1.15,long: 13, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 1.15,long: 14, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.15,long: 15, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 0.95,long: 12, types: ['rest','easy','easy','easy','rest','easy','long'] },  // cutback
+      { total: 1.2, long: 16, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 1.2, long: 18, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.2, long: 20, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 0.8, long: 12, types: ['rest','easy','easy','easy','rest','easy','long'] },  // taper 1
+      { total: 0.6, long: 8,  types: ['rest','easy','easy','easy','rest','easy','long'] },  // taper 2
+      { total: 0.35,long: 5,  types: ['rest','easy','easy','rest','rest','rest','race'] },  // race week
+    ]
+  },
+  intermediate: {
+    name: 'Intermediate',
+    weeks: [
+      { total: 1.0, long: 8,  types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.1, long: 10, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.1, long: 12, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 0.9, long: 10, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.15,long: 13, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.15,long: 14, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.15,long: 15, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 0.9, long: 12, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.2, long: 16, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.2, long: 17, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.2, long: 18, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 0.9, long: 14, types: ['rest','easy','easy','easy','rest','easy','long'] },
+      { total: 1.25,long: 20, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.25,long: 20, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 1.25,long: 22, types: ['rest','easy','speed','easy','rest','tempo','long'] },
+      { total: 0.8, long: 14, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 0.6, long: 10, types: ['rest','easy','tempo','easy','rest','easy','long'] },
+      { total: 0.3, long: 6,  types: ['rest','easy','easy','rest','rest','rest','race'] },
+    ]
+  },
+  advanced: {
+    name: 'Advanced',
+    weeks: [
+      { total: 1.0, long: 10, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.1, long: 12, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.15,long: 14, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 0.9, long: 10, types: ['rest','easy','easy','tempo','easy','rest','long'] },
+      { total: 1.2, long: 15, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.2, long: 16, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.2, long: 17, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 0.9, long: 14, types: ['rest','easy','easy','tempo','easy','rest','long'] },
+      { total: 1.25,long: 18, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.25,long: 18, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.25,long: 20, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 0.9, long: 15, types: ['rest','easy','easy','tempo','easy','rest','long'] },
+      { total: 1.3, long: 22, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.3, long: 22, types: ['rest','easy','speed','tempo','easy','easy','long'] },
+      { total: 1.3, long: 20, types: ['rest','easy','speed','tempo','easy','rest','long'] },
+      { total: 0.75,long: 15, types: ['rest','easy','speed','tempo','easy','rest','long'] },
+      { total: 0.55,long: 10, types: ['rest','easy','speed','easy','rest','easy','long'] },
+      { total: 0.25,long: 6,  types: ['rest','easy','easy','rest','rest','rest','race'] },
+    ]
+  }
+};
+
+const GOAL_PACES = {
+  sub3:   { mp: '6:52', easy: '7:45',  tempo: '6:25', long: '7:30' },
+  sub325: { mp: '7:49', easy: '8:50',  tempo: '7:10', long: '8:30' },
+  sub330: { mp: '8:02', easy: '9:00',  tempo: '7:30', long: '8:45' },
+  sub4:   { mp: '9:09', easy: '10:15', tempo: '8:30', long: '9:45' },
+  sub430: { mp: '10:18',easy: '11:30', tempo: '9:40', long: '11:00' },
+  finish: { mp: '11:30',easy: '13:00', tempo: '10:45',long: '12:00' },
+};
+
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function generatePlan() {
+  const raceDateStr = document.getElementById('race-date').value;
+  const goalTime = document.getElementById('goal-time').value;
+  const currentMiles = parseFloat(document.getElementById('current-miles').value) || 20;
+  const planStyle = document.getElementById('plan-style').value;
+
+  if (!raceDateStr) { alert('Please set a race date.'); return; }
+
+  const raceDate = new Date(raceDateStr);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const template = PLAN_TEMPLATES[planStyle];
+  const paces = GOAL_PACES[goalTime];
+  const totalWeeks = template.weeks.length;
+
+  // Find the Monday of the week the plan should start (totalWeeks before race)
+  const planStart = new Date(raceDate);
+  planStart.setDate(planStart.getDate() - (totalWeeks) * 7);
+  // Align to Monday
+  const dayOfWeek = planStart.getDay();
+  const daysToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
+  planStart.setDate(planStart.getDate() + daysToMonday);
+
+  // Progress
+  const totalDays = totalWeeks * 7;
+  const elapsedDays = Math.max(0, Math.floor((today - planStart) / 86400000));
+  const progress = Math.min(100, Math.round(elapsedDays / totalDays * 100));
+  const currentPlanWeek = Math.floor(elapsedDays / 7);
+
+  document.getElementById('plan-progress-wrap').style.display = 'block';
+  document.getElementById('progress-fill').style.width = progress + '%';
+  document.getElementById('progress-label-text').textContent =
+    `Week ${Math.min(currentPlanWeek+1, totalWeeks)} of ${totalWeeks} — ${template.name}`;
+  document.getElementById('progress-pct-text').textContent = `${progress}% complete`;
+
+  const grid = document.getElementById('plan-grid');
+  grid.innerHTML = '';
+
+  template.weeks.forEach((week, wi) => {
+    const weekStart = new Date(planStart);
+    weekStart.setDate(weekStart.getDate() + wi * 7);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const isCurrentWeek = wi === currentPlanWeek;
+    const isPastWeek = wi < currentPlanWeek;
+
+    // Scale mileage from current level
+    const scaleFactor = 1 + (wi / totalWeeks) * 0.5;
+    const weekTotal = Math.round(currentMiles * week.total * scaleFactor * 10) / 10;
+
+    // Calculate actual run days (non-rest, non-long)
+    const runDays = week.types.filter(t => t !== 'rest' && t !== 'long' && t !== 'race').length;
+    const longMiles = week.long;
+    const remainingMiles = Math.max(0, weekTotal - longMiles);
+    const easyMiles = runDays > 0 ? Math.round(remainingMiles / runDays * 10) / 10 : 0;
+
+    const el = document.createElement('div');
+    el.className = 'plan-week' + (isCurrentWeek ? ' current-week' : '');
+
+    const dateRange = `${weekStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${weekEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    const weekLabel = wi === totalWeeks - 1 ? 'Race Week' :
+                      wi >= totalWeeks - 3 ? `Taper ${wi - (totalWeeks - 4)}` :
+                      `Week ${wi + 1}`;
+
+    const days = week.types.map((type, di) => {
+      const dayDate = new Date(weekStart); dayDate.setDate(dayDate.getDate() + di);
+      const isToday = dayDate.toDateString() === today.toDateString();
+      const isPast = dayDate < today;
+
+      // Find actual run on this date
+      const dayStr = dayDate.toISOString().slice(0,10);
+      const actualRun = G.runs.find(r => r.date === dayStr);
+      const completed = actualRun && isPast;
+
+      let workout = '', dist = '', cssClass = '';
+      if (type === 'rest') {
+        workout = 'Rest'; cssClass = 'rest'; dist = '';
+      } else if (type === 'race') {
+        workout = '🏁 RACE'; cssClass = 'long'; dist = '26.2 mi';
+      } else if (type === 'long') {
+        workout = 'Long Run'; cssClass = 'long'; dist = `${longMiles} mi`;
+      } else if (type === 'tempo') {
+        workout = 'Tempo'; cssClass = 'tempo'; dist = `${easyMiles} mi`;
+      } else if (type === 'speed') {
+        workout = 'Speed'; cssClass = 'speed'; dist = `${Math.max(3, easyMiles-1)} mi`;
+      } else {
+        workout = 'Easy'; cssClass = 'easy'; dist = `${easyMiles} mi`;
+      }
+
+      const dayClasses = ['plan-day',
+        type === 'rest' ? 'rest' : '',
+        completed ? 'completed' : '',
+        isToday ? 'today' : '',
+      ].filter(Boolean).join(' ');
+
+      return `<div class="${dayClasses}">
+        <div class="day-name">${DAY_NAMES[di]}</div>
+        <div class="day-workout ${cssClass}">${workout}</div>
+        ${dist ? `<div class="day-dist">${actualRun ? actualRun.distance_mi+'✓' : dist}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    // Actual week miles if we have data
+    const actualMiles = G.weekly_summary.find(w => {
+      const planWeekStr = weekStart.toISOString().slice(0,10);
+      return Math.abs(new Date(w.week) - weekStart) < 4*86400000;
+    })?.miles;
+
+    el.innerHTML = `
+      <div class="plan-week-header">
+        <div class="plan-week-title">${weekLabel} <small>${dateRange}</small>
+          ${isCurrentWeek ? '<small style="color:var(--accent);font-weight:600"> ← Current</small>' : ''}
+        </div>
+        <div class="plan-week-miles">
+          ${actualMiles ? `<span style="color:var(--accent3)">${actualMiles} mi actual</span> / ` : ''}
+          ${weekTotal} mi planned
+        </div>
+      </div>
+      <div class="plan-days">${days}</div>`;
+
+    grid.appendChild(el);
+
+    // Scroll to current week
+    if (isCurrentWeek) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    }
+  });
+
+  // Pace reference card
+  const paceCard = document.createElement('div');
+  paceCard.className = 'card';
+  paceCard.style.marginTop = 'var(--gap)';
+  paceCard.innerHTML = `
+    <div class="card-title">Target Paces for ${document.getElementById('goal-time').options[document.getElementById('goal-time').selectedIndex].text}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:4px;">
+      ${[['Marathon Pace', paces.mp], ['Easy Run', paces.easy], ['Tempo Run', paces.tempo], ['Long Run', paces.long]]
+        .map(([label, pace]) => `
+          <div style="background:var(--surface2);border-radius:8px;padding:14px;">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">${label}</div>
+            <div style="font-size:22px;font-weight:700;color:var(--accent)">${pace}</div>
+            <div style="font-size:11px;color:var(--text2)">min/mile</div>
+          </div>`).join('')}
+    </div>`;
+  grid.appendChild(paceCard);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SLEEP & RECOVERY TAB
+// ═══════════════════════════════════════════════════════════════════════
+let recoveryChartsRendered = false;
+
+function scoreColor(s) {
+  if (s == null) return 'var(--text2)';
+  if (s >= 80) return 'var(--accent3)';
+  if (s >= 60) return 'var(--accent4)';
+  return 'var(--accent2)';
+}
+
+function renderRecoveryTab() {
+  const sk = G.sleep_kpis || {};
+  const sleep = G.sleep_days || [];
+  const recovery = G.recovery_days || [];
+
+  // KPIs
+  const lastScore = sk.last_score;
+  const lastHrs   = sk.last_total_hrs;
+  const el = document.getElementById('rkpi-last-score');
+  if (el) { el.textContent = lastScore ?? '—'; el.style.color = scoreColor(lastScore); }
+  setText('rkpi-last-hrs',   lastHrs != null ? lastHrs + 'h' : '—');
+  setText('rkpi-week-score', sk.this_week_avg_score ?? '—');
+  setText('rkpi-avg-score',  sk.avg_score ?? '—');
+  setText('rkpi-avg-hrs',    sk.avg_hrs != null ? sk.avg_hrs + 'h' : '—');
+
+  // Sleep log table (newest first, max 60 rows)
+  const tbody = document.getElementById('sleep-tbody');
+  if (tbody) {
+    const rows = [...sleep].reverse().slice(0, 60);
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:24px;">
+        No sleep data — run <code>python3 fetch_garmin.py</code> to sync.</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(s => {
+        const sc = s.score;
+        const dot = sc != null
+          ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${scoreColor(sc)};margin-right:6px;"></span>`
+          : '';
+        return `<tr>
+          <td>${s.date}</td>
+          <td style="color:${scoreColor(sc)};font-weight:600;">${dot}${sc ?? '—'}</td>
+          <td>${s.total_hrs != null ? s.total_hrs + 'h' : '—'}</td>
+          <td>${s.deep_hrs  != null ? s.deep_hrs  + 'h' : '—'}</td>
+          <td>${s.rem_hrs   != null ? s.rem_hrs   + 'h' : '—'}</td>
+          <td>${s.light_hrs != null ? s.light_hrs + 'h' : '—'}</td>
+          <td>${s.awake_mins != null ? s.awake_mins + 'm' : '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  if (recoveryChartsRendered || !sleep.length) return;
+  recoveryChartsRendered = true;
+
+  // Last 60 nights for trend charts
+  const recent60 = sleep.slice(-60);
+  const labels60 = recent60.map(s => {
+    const d = new Date(s.date);
+    return `${d.toLocaleString('default',{month:'short'})} ${d.getDate()}`;
+  });
+
+  // Sleep score line chart
+  new Chart(document.getElementById('chart-sleep-score').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels60,
+      datasets: [{
+        label: 'Sleep Score',
+        data: recent60.map(s => s.score),
+        borderColor: '#5b7fff',
+        backgroundColor: '#5b7fff18',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+        spanGaps: true,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v } },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: '#8b90a7' } }
+      },
+      plugins: {
+        legend: { display: false },
+        annotation: {
+          annotations: {
+            good:  { type:'line', yMin:80, yMax:80, borderColor:'#51cf6640', borderDash:[4,4] },
+            fair:  { type:'line', yMin:60, yMax:60, borderColor:'#fcc41940', borderDash:[4,4] },
+          }
+        }
+      }
+    })
+  });
+
+  // Sleep duration bar
+  new Chart(document.getElementById('chart-sleep-dur').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels60,
+      datasets: [{
+        label: 'Hours',
+        data: recent60.map(s => s.total_hrs),
+        backgroundColor: recent60.map(s =>
+          (s.total_hrs || 0) >= 7.5 ? '#51cf66cc' :
+          (s.total_hrs || 0) >= 6   ? '#fcc419cc' : '#ff6b6bcc'
+        ),
+        borderRadius: 3,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v+'h' } },
+        x: { display: false }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+
+  // Body battery last 30 days
+  const recent30bb = recovery.slice(-30);
+  const bbLabels = recent30bb.map(r => {
+    const d = new Date(r.date);
+    return `${d.toLocaleString('default',{month:'short'})} ${d.getDate()}`;
+  });
+  new Chart(document.getElementById('chart-body-battery').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: bbLabels,
+      datasets: [
+        {
+          label: 'Charged',
+          data: recent30bb.map(r => r.charged),
+          borderColor: '#51cf66',
+          backgroundColor: '#51cf6618',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          spanGaps: true,
+        },
+        {
+          label: 'Drained',
+          data: recent30bb.map(r => r.drained),
+          borderColor: '#ff6b6b',
+          backgroundColor: 'transparent',
+          tension: 0.3,
+          pointRadius: 2,
+          spanGaps: true,
+          borderDash: [4, 3],
+        }
+      ]
+    },
+    options: chartOpts({
+      scales: {
+        y: { beginAtZero: true },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8, color: '#8b90a7' } }
+      },
+      plugins: { legend: { labels: { color: '#8b90a7', boxWidth: 12 } } }
+    })
+  });
+
+  // Sleep stages donut (avg across all nights)
+  const withDeep  = sleep.filter(s => s.deep_hrs  != null);
+  const withRem   = sleep.filter(s => s.rem_hrs   != null);
+  const withLight = sleep.filter(s => s.light_hrs != null);
+  const avg = arr => arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2) : 0;
+  const deepAvg  = avg(withDeep.map(s=>s.deep_hrs));
+  const remAvg   = avg(withRem.map(s=>s.rem_hrs));
+  const lightAvg = avg(withLight.map(s=>s.light_hrs));
+  const awakeAvg = avg(sleep.filter(s=>s.awake_mins!=null).map(s=>+(s.awake_mins/60).toFixed(2)));
+
+  new Chart(document.getElementById('chart-sleep-stages').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Deep', 'REM', 'Light', 'Awake'],
+      datasets: [{
+        data: [deepAvg, remAvg, lightAvg, awakeAvg],
+        backgroundColor: ['#5b7fff','#51cf66','#74c0fc','#ff6b6b'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#8b90a7', boxWidth: 12 } },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}h avg` } }
+      }
+    }
+  });
+
+  // Weekly avg sleep score bar
+  const weekScoreMap = {};
+  sleep.forEach(s => {
+    const w = s.date.slice(0,10); // placeholder — use week_start logic
+    // compute Monday of this week
+    const d = new Date(s.date);
+    const mon = new Date(d); mon.setDate(d.getDate() - d.getDay() + (d.getDay()===0?-6:1));
+    const wk = mon.toISOString().slice(0,10);
+    if (!weekScoreMap[wk]) weekScoreMap[wk] = [];
+    if (s.score != null) weekScoreMap[wk].push(s.score);
+  });
+  const wkKeys = Object.keys(weekScoreMap).sort();
+  const wkLabels = wkKeys.map(w => { const d=new Date(w); return `${d.toLocaleString('default',{month:'short'})} ${d.getDate()}`; });
+  const wkScores = wkKeys.map(w => {
+    const arr = weekScoreMap[w];
+    return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+  });
+
+  new Chart(document.getElementById('chart-sleep-weekly').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: wkLabels,
+      datasets: [{
+        label: 'Avg Score',
+        data: wkScores,
+        backgroundColor: wkScores.map(s =>
+          s == null ? '#2e3250' : s >= 80 ? '#51cf66cc' : s >= 60 ? '#fcc419cc' : '#ff6b6bcc'
+        ),
+        borderRadius: 4,
+      }]
+    },
+    options: chartOpts({
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v } },
+        x: { grid: { display: false }, ticks: { color: '#8b90a7', maxTicksLimit: 10 } }
+      },
+      plugins: { legend: { display: false } }
+    })
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['overview','coach','log','strength','recovery'][i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COACHING PLAN
+// ═══════════════════════════════════════════════════════════════════════
+const COACH_PLAN_START = '2026-04-06';
+
+const COACH_PACES = [
+  { label:'Recovery',      range:'10:00–10:30', color:'var(--z2)',     desc:'Day after hard efforts — truly easy, HR ≤ 130' },
+  { label:'Easy / Long',   range:'8:45–9:15',   color:'var(--z1)',     desc:'80% of all your mileage — HR 135–145, conversational' },
+  { label:'Marathon Pace', range:'7:49',         color:'var(--accent)', desc:'3:25:00 goal pace — 26.2 × 7:49 = 3:24:57' },
+  { label:'Tempo (LT)',    range:'7:05–7:15',    color:'var(--z4)',     desc:'Comfortably hard — can speak in fragments only, 20–40 min' },
+  { label:'Intervals',     range:'6:30–6:45',    color:'var(--z5)',     desc:'VO2max effort — 400m–1mi repeats, near 5K race effort' },
+];
+
+const TYPE_META = {
+  rest:     { label:'Rest',     color:'var(--text2)',   bg:'rgba(139,144,167,0.08)' },
+  easy:     { label:'Easy',     color:'var(--z1)',      bg:'rgba(81,207,102,0.10)'  },
+  tempo:    { label:'Tempo',    color:'var(--z4)',      bg:'rgba(255,146,43,0.10)'  },
+  interval: { label:'Speed',    color:'var(--z5)',      bg:'rgba(255,107,107,0.10)' },
+  mp:       { label:'MP Run',   color:'var(--accent)',  bg:'rgba(91,127,255,0.10)'  },
+  long:     { label:'Long Run', color:'var(--accent)',  bg:'rgba(91,127,255,0.13)'  },
+  race:     { label:'🏁 RACE',  color:'var(--accent4)', bg:'rgba(252,196,25,0.13)'  },
+};
+
+// Strength assigned by day-of-week index (0=Mon … 6=Sun)
+// Mon=Abs, Tue=Upper, Wed=none, Thu=Lower, Fri=Abs, Sat=Upper, Sun=none
+// Strength by day-of-week (0=Mon … 6=Sun). Tue=Upper, Thu=Lower, Sat=Full Body.
+const STRENGTH_BY_DAY = {
+  1: { label:'Upper Body', color:'var(--z2)',      icon:'↑' },
+  3: { label:'Lower Body', color:'var(--accent)',  icon:'↓' },
+  5: { label:'Full Body',  color:'var(--accent4)', icon:'⊕' },
+};
+
+// ── Per-week overrides (edit to customise any week) ──────────────────────────
+// Keys are week indices (0-based). days{} keys are day indices (0=Mon…6=Sun).
+// strengthOverride: null = suppress strength; {...} = replace STRENGTH_BY_DAY label.
+const WEEK_OVERRIDES = {
+  6: {
+    note: 'Modified week — long run moved to Fri; Sat/Sun rest (traveling)',
+    days: {
+      1: { // Tue — user did light legs instead of upper body
+        strengthOverride: { label: 'Light Legs ✓', color: 'var(--accent)', icon: '↓' },
+        notes: 'Done — light lower body (swapped from Upper)',
+      },
+      2: { // Wed — keep tempo but flag leg fatigue
+        target: '1wu + 3–4mi@7:10–7:15 + 1cd',
+        notes: 'Light legs yesterday — scale back if needed',
+      },
+      3: { // Thu — Upper Body (legs already done Tue)
+        strengthOverride: { label: 'Upper Body', color: 'var(--z2)', icon: '↑' },
+        notes: 'Swapped to Upper (legs done Tue)',
+      },
+      4: { // Fri — Long Run 10 mi (moved from Sun)
+        type: 'long', mi: 10, target: '8:45–9:15',
+        notes: 'Long run moved here — traveling Sat/Sun',
+      },
+      5: { // Sat — Rest, no strength (traveling)
+        type: 'rest', target: 'Rest', notes: 'Traveling',
+        strengthOverride: null,
+      },
+      6: { // Sun — Rest (traveling)
+        type: 'rest', target: 'Rest', notes: 'Traveling',
+      },
+    }
+  },
+};
+
+const PHASE_META = {
+  'Base Build':    { color:'var(--z1)',      bg:'rgba(81,207,102,0.12)'  },
+  'Aerobic Dev':   { color:'var(--accent)',  bg:'rgba(91,127,255,0.12)'  },
+  'Race Specific': { color:'var(--z4)',      bg:'rgba(255,146,43,0.12)'  },
+  'Taper':         { color:'var(--accent4)', bg:'rgba(252,196,25,0.12)'  },
+};
+
+const DAY_ABR = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+// Schedule: Mon=Easy, Tue=Strength(Upper), Wed=Quality, Thu=Strength(Lower),
+//           Fri=Easy, Sat=Strength(Full Body), Sun=Long Run
+// days[] index: 0=Mon 1=Tue 2=Wed 3=Thu 4=Fri 5=Sat 6=Sun
+const COACH_WEEKS = [
+  // ── PHASE 0: COMPLETED BASE (Apr 6 – May 10) — 5 weeks already done ──
+  {phase:'Base Build', target:14, focus:'✓ Completed — base reactivation. 3 runs, short miles.', days:[
+    {type:'easy', mi:3,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:3,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:1,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:7,  target:'8:45–9:15', notes:''},
+  ]},
+  {phase:'Base Build', target:16, focus:'✓ Completed — peak week so far. 8-miler logged Apr 19.', days:[
+    {type:'easy', mi:4,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:4,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:8,  target:'8:45–9:15', notes:''},
+  ]},
+  {phase:'Base Build', target:3, focus:'✓ Completed — low week, recovery.', days:[
+    {type:'easy', mi:3,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+  ]},
+  {phase:'Base Build', target:9, focus:'✓ Completed — back to building. Two solid runs.', days:[
+    {type:'easy', mi:4,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:5,  target:'8:45–9:15', notes:''},
+  ]},
+  {phase:'Base Build', target:3, focus:'✓ Completed — light week. Ramping begins now.', days:[
+    {type:'easy', mi:3,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'rest', mi:0,  target:'8:45–9:15', notes:''},
+  ]},
+  // ── PHASE 1: BASE BUILD Weeks 6–12 (May 12 – Jun 29) ─────────────────
+  {phase:'Base Build', target:24, focus:'Consistency block begins. Easy days HR ≤ 145.', days:[
+    {type:'easy', mi:5,  target:'8:45–9:15',               notes:'HR ≤ 145'},
+    {type:'rest', mi:0,  target:'Upper Body',               notes:'Strength only'},
+    {type:'easy', mi:5,  target:'8:45–9:15',               notes:'Keep it easy'},
+    {type:'rest', mi:0,  target:'Lower Body',               notes:'Strength only'},
+    {type:'easy', mi:4,  target:'8:45–9:15',               notes:''},
+    {type:'rest', mi:0,  target:'Full Body',                notes:'Strength only'},
+    {type:'long', mi:10, target:'8:45–9:15',               notes:'Conversational effort'},
+  ]},
+  // PHASE 1 Wk 2
+  {phase:'Base Build', target:26, focus:'Build the long run. Trust the easy pace.', days:[
+    {type:'easy', mi:5,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo',mi:6,  target:'1wu + 4mi@7:10 + 1cd', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:4,  target:'8:45–9:15', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:11, target:'8:45–9:15', notes:''},
+  ]},
+  // ── PHASE 1 CONT: BASE BUILD Weeks 7–12 (May 25 – Jul 5) ─────────────
+  // Index 7 — Easy week, all aerobic, HR ≤ 145
+  {phase:'Base Build', target:22, focus:'Easy aerobic miles only. HR ≤ 145 every run. Build the engine quietly.', days:[
+    {type:'easy', mi:4,  target:'9:00–9:30', notes:'HR ≤ 145 — truly easy, no ego'},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:2,  target:'9:00–9:30', notes:'Shakeout only — legs fresh for Sunday'},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:11, target:'9:00–9:20', notes:'Conversational pace. Stop and walk if HR drifts above 150.'},
+  ]},
+  // Index 8 — Tempo introduced at lactate threshold effort
+  {phase:'Base Build', target:26, focus:'First tempo of the block. Lactate threshold pace, not race pace.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:6,  target:'1mi wu + 4mi@7:20–7:25 + 1mi cd', notes:'Comfortably hard — you can speak 3–4 word sentences. This is lactate threshold, NOT all-out.'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:3,  target:'9:00–9:30', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:12, target:'9:00–9:20', notes:'Gel every 40 min. Practice race nutrition now.'},
+  ]},
+  // Index 9 — Tempo tightens, long run to 13
+  {phase:'Base Build', target:28, focus:'Tempo extends by one mile. Long run adds a mile. Controlled build.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:7,  target:'1mi wu + 5mi@7:15–7:25 + 1mi cd', notes:'5 miles at LT pace — back off if HR goes above 168'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:3,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:13, target:'9:00–9:20', notes:'Fuel and hydrate well.'},
+  ]},
+  // Index 10 — Recovery week
+  {phase:'Base Build', target:21, focus:'↓ Recovery week. No tempo. Let the adaptation absorb. Body gets stronger during rest.', days:[
+    {type:'easy', mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:3,  target:'9:15–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:10, target:'9:15–9:30', notes:'Recovery long. No watch pressure — leave the data obsession at home.'},
+  ]},
+  // Index 11 — Biggest base week, tempo extends to 5 miles
+  {phase:'Base Build', target:30, focus:'Longest base week. Tempo extends to 5 miles. Big aerobic stimulus.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:7,  target:'1mi wu + 5mi@7:15–7:20 + 1mi cd', notes:'Controlled. Should feel like you could do one more mile but choose not to.'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:4,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:14, target:'9:00–9:20', notes:'Start easy, finish easy. Gel every 35–40 min.'},
+  ]},
+  // Index 12 — Phase 1 finale: first 15-miler
+  {phase:'Base Build', target:28, focus:'🎯 First 15-miler. Short tempo mid-week to save legs. Big milestone.', days:[
+    {type:'easy',  mi:4,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:5,  target:'1mi wu + 3mi@7:15 + 1mi cd', notes:'Short and controlled — save legs for Sunday'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:4,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:15, target:'9:00–9:20', notes:'🎯 First 15-miler! Fuel every 35 min. Walk 60s at mile 10 if needed. You\'ve earned this.'},
+  ]},
+  // ── PHASE 2: AEROBIC DEVELOPMENT Weeks 13–19 (Jul 6 – Aug 23) ──────────
+  // Index 13 — Intervals replace tempo, July heat management
+  {phase:'Aerobic Dev', target:32, focus:'Intervals begin. July heat: run by effort, not GPS. Add 30s/mi if feels hard.', days:[
+    {type:'easy',     mi:5,  target:'9:00–9:30', notes:'Heat: slow down — effort over pace always'},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:7,  target:'2mi wu + 6×800m@6:45–6:55, 90s jog recovery + 1mi cd', notes:'Track or flat road. Strong effort, full recovery between reps.'},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:15, target:'9:00–9:30', notes:'Early AM if possible. Gel every 35 min. Hydrate aggressively.'},
+  ]},
+  // Index 14 — Build to 16-miler, mile repeats
+  {phase:'Aerobic Dev', target:34, focus:'Mile repeats build lactate tolerance. 16-miler: practice your race-day fueling plan.', days:[
+    {type:'easy',     mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:7,  target:'2mi wu + 5×1mi@6:50–7:00, 2min jog recovery + 1mi cd', notes:'Mile reps at 5K–10K effort. Last rep can be faster if legs feel great.'},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:16, target:'9:00–9:20', notes:'Gel every 35 min — simulate race nutrition. Walk 60s at mile 12 if HR spikes.'},
+  ]},
+  // Index 15 — Tempo week, 17-miler
+  {phase:'Aerobic Dev', target:36, focus:'Tempo returns alongside the long run build. 17-miler is a big step.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:8,  target:'1mi wu + 6mi@7:15–7:20 + 1mi cd', notes:'Longest tempo yet. Miles 4–6 will be hard — hold your form, not your pace.'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:5,  target:'9:00–9:30', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:17, target:'9:00–9:20', notes:'Last 3 miles are the real workout. Gel every 35 min. Do not start fast.'},
+  ]},
+  // Index 16 — Recovery week
+  {phase:'Aerobic Dev', target:24, focus:'↓ Recovery week. Shorter intervals. Let 17-miler fully absorb.', days:[
+    {type:'easy',     mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:5,  target:'2mi wu + 4×800m@6:45–6:55, 90s jog + 1mi cd', notes:'Short and controlled. This is maintenance, not stimulus.'},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:3,  target:'9:15–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:13, target:'9:15–9:30', notes:'Easy recovery long. Leave the watch at home.'},
+  ]},
+  // Index 17 — First 18-miler, big aerobic week
+  {phase:'Aerobic Dev', target:38, focus:'🎯 First 18-miler. Peak aerobic week. Nail the fueling — this rehearses your race-day stomach.', days:[
+    {type:'easy',     mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:8,  target:'2mi wu + 6×1mi@6:50–7:00, 90s jog + 1mi cd', notes:'6 mile reps is a serious aerobic stimulus. Controlled effort, not all-out.'},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:7,  target:'9:00–9:20', notes:'Medium-long run — keep fully easy, supports Sunday'},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:18, target:'9:00–9:20', notes:'🎯 First 18-miler! Gel every 35 min. Strategic walk breaks are not weakness.'},
+  ]},
+  // Index 18 — First 20-miler: peak aerobic milestone
+  {phase:'Aerobic Dev', target:40, focus:'🎯🎯 First 20-miler. Biggest week of your running life so far. Be proud.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'tempo', mi:9,  target:'1mi wu + 7mi@7:15–7:20 + 1mi cd', notes:'Longest tempo of the block. Controlled and steady — not racing.'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',  mi:6,  target:'9:00–9:20', notes:'Medium-long — easy effort, supports aerobic base'},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',  mi:20, target:'9:00–9:20', notes:'🎯 First 20-miler! Run miles 1–17 embarrassingly easy. Miles 18–20: push to 8:45. Gel every 35 min. Walk if needed — finishing is what matters.'},
+  ]},
+  // Index 19 — Planned recovery before Phase 3
+  {phase:'Aerobic Dev', target:25, focus:'↓ Planned down week. Absorb 4 weeks of big training. Phase 3 race-specific work starts fresh.', days:[
+    {type:'easy', mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'easy', mi:5,  target:'9:15–9:30', notes:'Optional fartlek: 6×1min@7:30 effort scattered in the middle if feeling good'},
+    {type:'rest', mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy', mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest', mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long', mi:13, target:'9:15–9:30', notes:'Recovery long. Relaxed. No pressure.'},
+  ]},
+  // ── PHASE 3: RACE SPECIFIC Weeks 20–24 (Aug 24 – Sep 27) ───────────────
+  // Index 20 — Marathon pace enters the long run
+  {phase:'Race Specific', target:36, focus:'Marathon pace enters the long run for the first time. Last 4 miles at goal 7:49.', days:[
+    {type:'easy',     mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:7,  target:'2mi wu + 5×1mi@6:50–7:00, 2min jog + 1mi cd', notes:''},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:19, target:'15mi@9:00–9:20 → 4mi@7:49', notes:'🎯 First MP finish long run. If 7:49 feels hard for 4 miles now, it will feel easy on race day after 4 months of this.'},
+  ]},
+  // Index 21 — Second 20-miler with 6 MP miles
+  {phase:'Race Specific', target:38, focus:'Second 20-miler. 6 miles at marathon pace at the end. This is your race simulator.', days:[
+    {type:'easy',     mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:7,  target:'2mi wu + 5×1mi@6:50–7:00, 2min jog + 1mi cd', notes:''},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:6,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:20, target:'14mi@9:00–9:20 → 6mi@7:49', notes:'🎯 6 MP miles after 14 easy. This is the workout that makes marathoners. Fuel and hydrate perfectly.'},
+  ]},
+  // Index 22 — Recovery before peak simulation
+  {phase:'Race Specific', target:28, focus:'↓ Recovery week before peak simulation. Protect legs. Sleep is training.', days:[
+    {type:'easy',     mi:4,  target:'9:15–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body', notes:'Strength only'},
+    {type:'interval', mi:5,  target:'2mi wu + 5×800m@6:45–6:55, 90s jog + 1mi cd', notes:'Short and sharp — keep legs responsive'},
+    {type:'rest',     mi:0,  target:'Lower Body', notes:'Strength only'},
+    {type:'easy',     mi:5,  target:'9:15–9:30', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body',  notes:'Strength only'},
+    {type:'long',     mi:15, target:'9:00–9:20', notes:'Easy long. No pressure.'},
+  ]},
+  // Index 23 — Peak simulation: 20-miler with 8 MP miles
+  {phase:'Race Specific', target:40, focus:'🎯 PEAK SIMULATION. 20-miler with 8 MP miles. If you run this, you WILL run 3:25.', days:[
+    {type:'easy',  mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Upper Body', notes:'Strength only — last heavy week'},
+    {type:'mp',    mi:9,  target:'1mi wu + 7mi@7:49 + 1mi cd', notes:'7 miles at marathon pace mid-week. This teaches your body what race day feels like.'},
+    {type:'rest',  mi:0,  target:'Lower Body', notes:'Strength only — last heavy week'},
+    {type:'easy',  mi:6,  target:'9:00–9:20', notes:''},
+    {type:'rest',  mi:0,  target:'Full Body',  notes:'Strength only — last heavy week'},
+    {type:'long',  mi:20, target:'12mi@9:00–9:20 → 8mi@7:49', notes:'🎯 PEAK RUN: 8 MP miles at the end of 20. This is the hardest workout of the entire plan. Gel every 35 min. You are ready.'},
+  ]},
+  // Index 24 — Pre-taper: volume down, sharpening
+  {phase:'Race Specific', target:32, focus:'Pre-taper. Volume drops, legs start recovering. 5 weeks to race.', days:[
+    {type:'easy',     mi:4,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body — reduce load', notes:'Strength only'},
+    {type:'interval', mi:6,  target:'2mi wu + 4×1mi@6:50–7:00, 2min jog + 1mi cd', notes:'Keep the quality high — volume drops but intensity stays'},
+    {type:'rest',     mi:0,  target:'Lower Body — reduce load', notes:'Strength only'},
+    {type:'easy',     mi:5,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body — reduce load',  notes:'Strength only'},
+    {type:'long',     mi:17, target:'9:00–9:20, last 2mi@7:49', notes:'Gentle MP reminder at the end. Stay relaxed.'},
+  ]},
+  // ── PHASE 4: TAPER Weeks 25–29 (Sep 28 – Nov 1) ───────────────────────
+  // Index 25 — Taper begins: volume drops 20%
+  {phase:'Taper', target:25, focus:'Taper begins. Volume drops 20%. Intensity stays sharp. Taper tantrums are normal — trust the process.', days:[
+    {type:'easy',     mi:4,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body — light',  notes:'Strength only'},
+    {type:'interval', mi:6,  target:'2mi wu + 4×800m@6:40–6:50, 90s jog + 1mi cd', notes:'Keep the snap in your legs'},
+    {type:'rest',     mi:0,  target:'Lower Body — light',  notes:'Strength only'},
+    {type:'easy',     mi:3,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body — light',   notes:'Strength only'},
+    {type:'long',     mi:13, target:'9:00–9:20, last 2mi@7:49', notes:'Stay fresh. No heroics. Last 2 at MP just to feel good.'},
+  ]},
+  // Index 26 — Taper deepens: 3 weeks out
+  {phase:'Taper', target:19, focus:'3 weeks out. Volume drops further. Legs banking rest. Trust the work you\'ve done.', days:[
+    {type:'easy',     mi:3,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Upper Body — very light', notes:'Strength only'},
+    {type:'interval', mi:4,  target:'1mi wu + 5×400m@6:30, 90s jog + 1mi cd', notes:'Short and sharp — keep the neuromuscular pop'},
+    {type:'rest',     mi:0,  target:'Lower Body — very light', notes:'Strength only'},
+    {type:'easy',     mi:3,  target:'9:00–9:20', notes:''},
+    {type:'rest',     mi:0,  target:'Full Body — skip or mobility only', notes:'Optional'},
+    {type:'long',     mi:10, target:'9:00–9:20, last 1mi@7:49', notes:'Last double-digit run. Keep it relaxed. Note how good 7:49 feels now.'},
+  ]},
+  // Index 27 — 2 weeks out
+  {phase:'Taper', target:14, focus:'2 weeks out. Nothing new. Sleep 8h+. Hydrate. You are trained — protect that training now.', days:[
+    {type:'easy', mi:3,  target:'9:00–9:20', notes:''},
+    {type:'rest', mi:0,  target:'Upper Body — mobility only', notes:'Strength only'},
+    {type:'mp',   mi:5,  target:'1mi wu + 3mi@7:49 + 1mi cd', notes:'Race-pace tune-up. Feel how comfortable 7:49 has become.'},
+    {type:'rest', mi:0,  target:'Lower Body — skip', notes:'Rest'},
+    {type:'easy', mi:3,  target:'9:00–9:20 + 4×100m strides', notes:'Strides keep the turnover sharp'},
+    {type:'rest', mi:0,  target:'Full Body — skip', notes:'Rest'},
+    {type:'easy', mi:5,  target:'9:00–9:20', notes:'Last medium run. Run it feeling like you\'re floating.'},
+  ]},
+  // Index 28 — 1 week out (race week prep)
+  {phase:'Taper', target:12, focus:'Race week. Off feet when possible. Carb load Thu–Sat. Sleep is your secret weapon.', days:[
+    {type:'easy', mi:3,  target:'9:00–9:20', notes:'Shake out the taper stiffness'},
+    {type:'rest', mi:0,  target:'Rest — no lifting', notes:'Protect the legs entirely'},
+    {type:'easy', mi:2,  target:'9:00–9:20 + 4×100m strides', notes:'Strides wake the legs up — they should feel explosive'},
+    {type:'rest', mi:0,  target:'Rest — no lifting', notes:'Carb load begins. Rice, pasta, bread. Avoid fiber.'},
+    {type:'easy', mi:2,  target:'9:00–9:20', notes:'Very easy. Just moving.'},
+    {type:'rest', mi:0,  target:'Rest', notes:'Off feet. Full carb load. Prep gear. Visualize mile 20 to finish.'},
+    {type:'easy', mi:5,  target:'9:00–9:20', notes:'2–3 miles easy to shake out. Race is TOMORROW.'},
+  ]},
+  // Index 29 — Race day: Nov 1, 2026
+  {phase:'Taper', target:26, focus:'🏁 RACE DAY — NYC Marathon. Everything you\'ve done leads to this moment.', days:[
+    {type:'rest', mi:0,    target:'Rest', notes:'Off feet. Hydrate. Trust your training.'},
+    {type:'rest', mi:0,    target:'Rest — no lifting', notes:'Rest completely'},
+    {type:'rest', mi:0,    target:'Rest', notes:'Rest. Eat well. Sleep well.'},
+    {type:'rest', mi:0,    target:'Rest', notes:'Carb load. Stay off feet.'},
+    {type:'rest', mi:0,    target:'Rest', notes:'Light walk only. Full carb load.'},
+    {type:'rest', mi:0,    target:'Rest', notes:'Gear check. Early bedtime. Visualize.'},
+    {type:'race', mi:26.2, target:'7:49 avg → 3:25:00', notes:'🏁 NYC MARATHON — Go out 10s/mile slower than goal for first 10 miles. Negative split. You are ready. Run YOUR race.'},
+  ]},
+];
+
+function coachWeekIndex() {
+  const start = new Date(COACH_PLAN_START + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.floor((today - start) / 86400000);
+  return Math.min(Math.max(diff < 0 ? 0 : Math.floor(diff / 7), 0), COACH_WEEKS.length - 1);
+}
+
+function coachWeekMonday(wi) {
+  const d = new Date(COACH_PLAN_START + 'T00:00:00');
+  d.setDate(d.getDate() + wi * 7);
+  return d;
+}
+
+let selectedWeek = null; // null = current week
+
+function selectWeek(wi) {
+  selectedWeek = wi;
+  renderCoachWeekGrid();
+  renderCoachPhasesOverview();
+  renderCoachPhaseBar();
+  // Scroll week grid into view
+  document.getElementById('coach-week-grid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderCoachTab() {
+  selectedWeek = null;
+  renderCoachPhaseBar();
+  renderCoachWeekGrid();
+  renderCoachPaces();
+  renderCoachPhasesOverview();
+  renderCoachNutrition();
+  renderCoachNYC();
+}
+
+function renderCoachPhaseBar() {
+  const currentWi = coachWeekIndex();
+  const wi = selectedWeek !== null ? selectedWeek : currentWi;
+  const week = COACH_WEEKS[wi];
+  const pm = PHASE_META[week.phase];
+  const phaseStart = COACH_WEEKS.findIndex(w => w.phase === week.phase);
+  const phaseWeeksCount = COACH_WEEKS.filter(w => w.phase === week.phase).length;
+  const weekInPhase = wi - phaseStart + 1;
+  const pct = Math.round((currentWi / (COACH_WEEKS.length - 1)) * 100);
+  const weeksLeft = COACH_WEEKS.length - 1 - currentWi;
+  const isViewing = selectedWeek !== null && selectedWeek !== currentWi;
+  const monday = coachWeekMonday(wi);
+  const weekOf = monday.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+  document.getElementById('coach-phase-bar').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:4px;">
+          ${isViewing ? `Viewing Week ${wi+1} &nbsp;·&nbsp; <span style="cursor:pointer;color:var(--accent);text-decoration:underline;" onclick="selectWeek(null)">← Back to current</span>` : 'Current Phase'}
+        </div>
+        <div style="font-size:20px;font-weight:700;color:${pm.color};">${week.phase}</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:2px;">Week ${wi+1} of ${COACH_WEEKS.length} &nbsp;·&nbsp; Week ${weekInPhase} of ${phaseWeeksCount} in phase &nbsp;·&nbsp; ${weekOf}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:4px;">Race Countdown</div>
+        <div style="font-size:20px;font-weight:700;color:var(--accent4);">${weeksLeft} weeks</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:2px;">Nov 1, 2026 · Goal 3:25:00 (7:49/mi)</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:5px;">
+        <span>${week.focus}</span><span>${pct}% complete (you are in Week ${currentWi+1})</span>
+      </div>
+      <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${pm.color},var(--accent));border-radius:3px;"></div>
+      </div>
+    </div>`;
+}
+
+function resolveDay(wi, di) {
+  // Merge base plan day with any per-week override for that day index.
+  const base = { ...COACH_WEEKS[wi].days[di] };
+  const ovr  = WEEK_OVERRIDES[wi]?.days?.[di];
+  if (!ovr) return { day: base, strengthOverride: undefined };
+  const { strengthOverride, ...rest } = ovr;
+  return { day: { ...base, ...rest }, strengthOverride };
+}
+
+function renderCoachWeekGrid() {
+  const currentWi = coachWeekIndex();
+  const wi = selectedWeek !== null ? selectedWeek : currentWi;
+  const week = COACH_WEEKS[wi];
+  const weekOverride = WEEK_OVERRIDES[wi];
+  const monday = coachWeekMonday(wi);
+  const today = new Date(); today.setHours(0,0,0,0);
+  let loggedMiles = 0;
+
+  document.getElementById('coach-week-grid').innerHTML = week.days.map((_, di) => {
+    const { day, strengthOverride } = resolveDay(wi, di);
+    const date = new Date(monday); date.setDate(date.getDate() + di);
+    const dateStr = date.toISOString().slice(0,10);
+    const isToday = date.toDateString() === today.toDateString();
+    const isPast  = date < today;
+    const tm = TYPE_META[day.type] || TYPE_META.easy;
+    const actual = G && G.runs ? G.runs.find(r => r.date === dateStr) : null;
+    const done = !!(actual && (isPast || isToday));
+    if (actual) loggedMiles += actual.distance_mi;
+
+    const border = done     ? '1px solid var(--z1)'
+                 : isToday  ? '1px solid var(--accent)'
+                 : '1px solid transparent';
+
+    // strengthOverride===null → suppress; ===object → use it; ===undefined → default
+    const baseStrength = STRENGTH_BY_DAY[di];
+    const strength = strengthOverride === undefined ? baseStrength
+                   : strengthOverride === null       ? null
+                   : strengthOverride;
+
+    const isStrengthOnly = day.type === 'rest' && strength;
+    const isPureRest     = day.type === 'rest' && !strength;
+    const displayTm = isStrengthOnly
+      ? { label: strength.label, color: strength.color, bg: 'rgba(0,0,0,0.08)' }
+      : tm;
+    const opacity = isPast && !done && day.type !== 'rest' ? '0.45' : '1';
+
+    return `<div style="background:${displayTm.bg};border-radius:8px;padding:7px 4px;text-align:center;min-height:104px;display:flex;flex-direction:column;justify-content:center;gap:2px;border:${border};opacity:${opacity};">
+      <div style="font-size:9px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px;">${DAY_ABR[di]}</div>
+      <div style="font-size:13px;margin-top:2px;">${isStrengthOnly ? strength.icon : ''}</div>
+      <div style="font-size:11px;font-weight:700;color:${displayTm.color};margin-top:1px;">${displayTm.label}</div>
+      ${!isStrengthOnly && day.mi > 0 ? `<div style="font-size:10px;color:var(--text2);">${day.mi} mi</div>` : ''}
+      ${!isStrengthOnly && day.target ? `<div style="font-size:9px;color:var(--text2);line-height:1.3;margin-top:1px;">${day.target}</div>` : ''}
+      ${isPureRest ? `<div style="font-size:10px;color:var(--text2);opacity:0.5;">${day.notes || '—'}</div>` : ''}
+      ${done ? `<div style="font-size:9px;color:var(--z1);font-weight:700;margin-top:2px;">✓ ${actual.distance_mi}mi</div><div style="font-size:9px;color:var(--z1);">${actual.avg_pace}/mi</div>` : ''}
+      ${isToday && !done && !isPureRest ? `<div style="font-size:9px;color:var(--accent);font-weight:700;margin-top:2px;">TODAY</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const monday2 = coachWeekMonday(wi);
+  document.getElementById('coach-week-summary').innerHTML =
+    (weekOverride?.note ? `<div style="color:var(--accent4);font-size:11px;margin-bottom:6px;">⚠ ${weekOverride.note}</div>` : '') +
+    `<span style="color:var(--text2);">Target: <strong style="color:var(--text);">${week.target} mi</strong></span>` +
+    (loggedMiles > 0 ? ` &nbsp;·&nbsp; <span style="color:var(--text2);">Logged: <strong style="color:var(--z1);">${Math.round(loggedMiles*10)/10} mi</strong></span>` : '') +
+    ` &nbsp;·&nbsp; <span style="color:var(--text2);">Week of ${monday2.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`;
+}
+
+function renderCoachPaces() {
+  document.getElementById('coach-paces-list').innerHTML =
+    COACH_PACES.map(p => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div style="width:4px;height:36px;background:${p.color};border-radius:2px;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:${p.color};">${p.label}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:1px;">${p.desc}</div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;">${p.range}</div>
+      </div>`).join('') +
+    `<div style="margin-top:10px;font-size:11px;color:var(--text2);">All paces min/mile · Calibrated for 3:25:00 finish · 7:49/mi MP</div>`;
+}
+
+function renderCoachPhasesOverview() {
+  const currentWi = coachWeekIndex();
+  const viewingWi = selectedWeek !== null ? selectedWeek : currentWi;
+  const phases = [...new Set(COACH_WEEKS.map(w => w.phase))];
+  document.getElementById('coach-phases').innerHTML = phases.map(phase => {
+    const pm = PHASE_META[phase];
+    const weeks = COACH_WEEKS.map((w,i) => ({...w,i})).filter(w => w.phase === phase);
+    const startMon = coachWeekMonday(weeks[0].i);
+    const endMon   = coachWeekMonday(weeks[weeks.length-1].i);
+    endMon.setDate(endMon.getDate()+6);
+    const dateRange = `${startMon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${endMon.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">
+        <div style="font-size:12px;font-weight:700;color:${pm.color};text-transform:uppercase;letter-spacing:.5px;">${phase}</div>
+        <div style="font-size:11px;color:var(--text2);">${dateRange} · ${weeks.length} weeks</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${weeks.map(w => {
+          const isCurrent  = w.i === currentWi;
+          const isSelected = w.i === viewingWi;
+          const isPast     = w.i < currentWi;
+          const bg    = isSelected && !isCurrent ? 'var(--surface2)'
+                      : isCurrent               ? pm.color
+                      : isPast                  ? 'rgba(255,255,255,0.04)'
+                      : pm.bg;
+          const clr   = isSelected && !isCurrent ? '#fff'
+                      : isCurrent               ? '#fff'
+                      : isPast                  ? 'var(--text2)'
+                      : pm.color;
+          const bdr   = isSelected ? `2px solid #fff`
+                      : isCurrent  ? `1px solid ${pm.color}`
+                      : `1px solid var(--border)`;
+          const fw    = isSelected || isCurrent ? '700' : '400';
+          return `<div onclick="selectWeek(${w.i})" style="padding:5px 7px;border-radius:5px;font-size:11px;text-align:center;min-width:42px;cursor:pointer;
+            background:${bg};color:${clr};border:${bdr};font-weight:${fw};
+            transition:opacity 0.1s;" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
+            <div>W${w.i+1}</div>
+            <div style="font-size:9px;opacity:.8;">${w.target}mi</div>
+            ${isCurrent ? `<div style="font-size:8px;margin-top:1px;">NOW</div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCoachNutrition() {
+  const rows = [
+    ['< 60 min',      'var(--z2)',     'No fueling needed. Black coffee fine beforehand.'],
+    ['60–90 min',     'var(--z1)',     'Eat 200–300 cal 1–2 hrs before. Banana + PB, oatmeal, or toast + eggs. Low fiber.'],
+    ['Long 90+ min',  'var(--accent)', 'Eat 400–500 cal 2 hrs before. Oatmeal + 25g protein + coffee.'],
+    ['During (75+ min)','var(--z4)',   '1 gel every 35–40 min. Start at mi 4–5. Aim 30–60g carbs/hr. Use electrolyte gels.'],
+    ['Post-run',      'var(--z5)',     '25–30g protein + 40–60g carbs within 30 min. Chocolate milk, Greek yogurt + banana, or shake + rice cakes.'],
+    ['Daily protein', 'var(--accent4)','120–140g/day across 3–4 meals (35–40g each). Creatine nightly — consistency beats timing.'],
+  ];
+  document.getElementById('coach-nutrition').innerHTML =
+    `<div style="display:flex;flex-direction:column;gap:8px;">` +
+    rows.map(([title,color,body]) =>
+      `<div style="display:flex;gap:10px;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid ${color};">
+        <div><div style="font-size:11px;font-weight:700;color:${color};margin-bottom:3px;">${title}</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.5;">${body}</div></div>
+      </div>`).join('') +
+    `<div style="font-size:11px;color:var(--text2);padding-top:4px;">NYC tip: First gel at Mile 6 (before Queensboro). 4 gels in by Mile 20.</div></div>`;
+}
+
+function renderCoachNYC() {
+  const segs = [
+    {mi:'0–3',   name:'Verrazzano Bridge',  pace:'8:05–8:10', color:'var(--z2)',    tip:'Start 15–20 sec/mi conservative. The crowd will drag you out too fast — resist. Bank effort, not time.'},
+    {mi:'3–13',  name:'Brooklyn',            pace:'7:49–7:55', color:'var(--z1)',    tip:'Settle into 7:49 goal pace. This should feel controlled — not easy, not hard. If it feels hard here, you started too fast.'},
+    {mi:'13–16', name:'Queensboro Bridge',   pace:'effort',    color:'var(--z5)',    tip:'⚠️ Biggest danger zone. Run by effort — accept 8:10–8:20 up the bridge. Do NOT surge on the downhill into Manhattan.'},
+    {mi:'16–20', name:'1st Ave + Bronx',     pace:'7:49–7:55', color:'var(--z4)',    tip:'Crowd is electric. Lock back into 7:49. This is where 3:25 is won or lost — discipline here is everything.'},
+    {mi:'20–23', name:'Fifth Ave Climb',     pace:'effort',    color:'var(--z5)',    tip:'⚠️ Hardest climb on dead legs. Accept 8:05–8:15 here. Shorten stride, drive arms, ignore the watch.'},
+    {mi:'23–26', name:'Central Park Finish', pace:'all out',   color:'var(--accent4)','tip':'Empty the tank. Mild downhill to the finish — let gravity work. You trained for this moment.'},
+  ];
+  document.getElementById('coach-nyc').innerHTML =
+    `<div style="display:flex;flex-direction:column;gap:6px;">` +
+    segs.map(s => `
+      <div style="display:flex;gap:10px;padding:10px;background:var(--surface2);border-radius:8px;">
+        <div style="flex-shrink:0;text-align:center;min-width:40px;">
+          <div style="font-size:9px;color:var(--text2);">Mi</div>
+          <div style="font-size:11px;font-weight:700;color:${s.color};">${s.mi}</div>
+          <div style="font-size:9px;color:var(--text2);margin-top:1px;">${s.pace}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:${s.color};margin-bottom:2px;">${s.name}</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5;">${s.tip}</div>
+        </div>
+      </div>`).join('') +
+    `<div style="font-size:11px;color:var(--text2);padding:8px 0 2px;border-top:1px solid var(--border);margin-top:2px;">
+       Effort through Mi 16 &nbsp;→&nbsp; Pace to Mi 23 &nbsp;→&nbsp; Guts to the finish
+     </div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════
+loadData();
+</script>
+</body>
+</html>
