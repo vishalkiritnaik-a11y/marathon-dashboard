@@ -2534,9 +2534,9 @@ function generatePlan() {
 
       const actualRun = (isPastWeek || isCurrentWeek) && pIdx < weekRunsP.length ? weekRunsP[pIdx++] : null;
 
-      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 11px;border-radius:6px;background:rgba(255,255,255,0.03);${actualRun ? 'border:1px solid var(--accent3);' : ''}">
-        <span class="day-workout ${cssClass}" style="font-size:12px;">${workout}</span>
-        <span style="font-size:12px;color:var(--text2);">${actualRun ? actualRun.distance_mi + ' mi ✓' : dist}</span>
+      return `<div style="flex:1;min-width:78px;text-align:center;padding:7px 6px;border-radius:6px;background:rgba(255,255,255,0.03);${actualRun ? 'border:1px solid var(--accent3);' : ''}">
+        <div class="day-workout ${cssClass}" style="font-size:12px;">${workout}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">${actualRun ? actualRun.distance_mi + ' mi ✓' : dist}</div>
       </div>`;
     }).filter(Boolean).join('');
 
@@ -2556,7 +2556,7 @@ function generatePlan() {
           ${weekTotal} mi planned
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px;">${days}</div>`;
+      <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">${days}</div>`;
 
     grid.appendChild(el);
 
@@ -3338,29 +3338,24 @@ function renderCoachWeekGrid() {
   });
 
   document.getElementById('coach-week-grid').innerHTML =
-    `<div style="display:flex;flex-direction:column;gap:8px;">` +
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px;">` +
     items.map(it => {
       if (it.kind === 'strength') {
         const s = it.strength;
-        return `<div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.08);border-radius:8px;padding:10px 12px;border:1px solid transparent;">
-          <div style="width:22px;text-align:center;font-size:16px;color:${s.color};flex-shrink:0;">${s.icon}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;color:${s.color};">${s.label}</div>
-            <div style="font-size:11px;color:var(--text2);">${it.notes || 'Strength session'}</div>
-          </div>
+        return `<div style="background:rgba(0,0,0,0.08);border-radius:8px;padding:8px 4px;text-align:center;min-height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid transparent;">
+          <div style="font-size:16px;color:${s.color};">${s.icon}</div>
+          <div style="font-size:11px;font-weight:700;color:${s.color};line-height:1.2;">${s.label}</div>
+          <div style="font-size:9px;color:var(--text2);line-height:1.25;">${it.notes || 'Strength'}</div>
         </div>`;
       }
       const { day, actual } = it;
       const tm = TYPE_META[day.type] || TYPE_META.easy;
       const done = !!actual;
-      return `<div style="display:flex;align-items:center;gap:12px;background:${tm.bg};border-radius:8px;padding:10px 12px;border:1px solid ${done ? 'var(--z1)' : 'transparent'};">
-        <div style="width:6px;height:38px;border-radius:3px;background:${tm.color};flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:${tm.color};">${tm.label}${day.mi > 0 ? ` · ${day.mi} mi` : ''}</div>
-          ${day.target ? `<div style="font-size:11px;color:var(--text2);line-height:1.35;">${day.target}</div>` : ''}
-          ${day.notes ? `<div style="font-size:10px;color:var(--text2);opacity:.8;">${day.notes}</div>` : ''}
-        </div>
-        ${done ? `<div style="text-align:right;flex-shrink:0;"><div style="font-size:11px;color:var(--z1);font-weight:700;">✓ ${actual.distance_mi} mi</div><div style="font-size:10px;color:var(--z1);">${actual.avg_pace}/mi</div></div>` : ''}
+      return `<div style="background:${tm.bg};border-radius:8px;padding:8px 4px;text-align:center;min-height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid ${done ? 'var(--z1)' : 'transparent'};">
+        <div style="font-size:11px;font-weight:700;color:${tm.color};line-height:1.2;">${tm.label}</div>
+        ${day.mi > 0 ? `<div style="font-size:10px;color:var(--text2);">${day.mi} mi</div>` : ''}
+        ${day.target ? `<div style="font-size:9px;color:var(--text2);line-height:1.25;">${day.target}</div>` : ''}
+        ${done ? `<div style="font-size:9px;color:var(--z1);font-weight:700;margin-top:2px;">✓ ${actual.distance_mi}mi</div><div style="font-size:9px;color:var(--z1);">${actual.avg_pace}/mi</div>` : ''}
       </div>`;
     }).join('') +
     `</div>`;
