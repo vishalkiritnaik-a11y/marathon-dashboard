@@ -2846,7 +2846,7 @@ const COACH_PLAN_START = '2026-04-06';
 const COACH_PACES = [
   { label:'Recovery',      range:'9:30–10:00', color:'var(--z2)',     desc:'Day after hard efforts — truly easy, HR ≤ 130' },
   { label:'Easy / Long',   range:'8:45–9:10',   color:'var(--z1)',     desc:'Your easy runs sit at 8:48–8:59, HR 130–136 — perfect. Keep it here.' },
-  { label:'Marathon Pace', range:'7:26–7:49', color:'var(--accent)', desc:'3:15 = 7:26 · 3:20 = 7:38 · 3:25 = 7:49. Oct 18 gate picks the tier. Oct 10: 8 @ 7:25 cost HR 161–169 after 12 easy — race HR ceiling ~155–158 first half.' },
+  { label:'Marathon Pace', range:'7:38 (3:20)', color:'var(--accent)', desc:'✅ LOCKED Oct 18: gate run last 4 @ 7:38 averaged HR 154 → 3:20 tier. (3:15 = 7:26 · 3:25 = 7:49 for reference.) Oct 10: 8 @ 7:25 cost HR 161–169 after 12 easy — race HR ceiling ~155–158 first half.' },
   { label:'Tempo (LT)',    range:'6:55–7:10',    color:'var(--z4)',     desc:'Measured LT ~6:49 — threshold work has been running 6:40–7:05' },
   { label:'Intervals',     range:'6:35–6:50',    color:'var(--z5)',     desc:'VO2max effort — 800m–1mi repeats, near 5K race effort' },
 ];
@@ -3206,27 +3206,27 @@ const COACH_WEEKS = [
     {type:'interval', mi:6,  target:'2mi wu + 3×1mi @ 6:55–7:05, 2min jog + 1mi cd', notes:'Smooth, not a test. Light lower body after — last lower session.'},
     {type:'easy',     mi:5,  target:'8:50–9:10', notes:''},
     {type:'rest',     mi:0,  target:'Rest', notes:'Sleep 8h — Sunday\'s HR reading depends on it.'},
-    {type:'long',     mi:13, target:'9mi @ 8:50–9:05 → 4mi @ 7:38', notes:'🎯 RACE-PACE GATE. Run the last 4 at exactly 7:38 and read the avg HR of those 4 miles: ≤ 152 & easy → race 3:15–3:18 (7:26–7:33). 153–158 → race 3:20 (7:38). > 158 → race 3:25 (7:49). Flat route, not after a bad night.'},
+    {type:'long',     mi:13, target:'9mi @ 8:50–9:05 → 4mi @ 7:38', notes:'✅ DONE — last-4 avg HR 154 → 3:20 tier (7:38). 🎯 RACE-PACE GATE. Run the last 4 at exactly 7:38 and read the avg HR of those 4 miles: ≤ 152 & easy → race 3:15–3:18 (7:26–7:33). 153–158 → race 3:20 (7:38). > 158 → race 3:25 (7:49). Flat route, not after a bad night.'},
   ]},
   // Index 28 — Taper week 2 (Oct 19–25): ~24 mi
-  {phase:'Taper', target:24, focus:'Taper wk 2 (~60%). Lock in the race pace Sunday\'s gate picked. Nothing new. Sleep 8h.', days:[
+  {phase:'Taper', target:24, focus:'Taper wk 2 (~60%). Race pace locked at 7:38 (3:20) — gate HR 154. Nothing new. Sleep 8h.', days:[
     {type:'easy',     mi:4,  target:'8:50–9:10', notes:''},
     {type:'rest',     mi:0,  target:'Upper Body — very light', notes:'Last strength session of the cycle'},
-    {type:'mp',       mi:6,  target:'1mi wu + 4mi @ race pace + 1mi cd', notes:'Exactly your chosen pace (7:26 / 7:38 / 7:49). HR should match or beat Sunday\'s. If it\'s 5+ bpm higher, drop one tier.'},
+    {type:'mp',       mi:6,  target:'1mi wu + 4mi @ 7:38 + 1mi cd', notes:'HR should be ≤ 154 (Sunday\'s gate). If it\'s 159+, drop to 7:49 (3:25). If it\'s ≤ 150 and easy, still race 7:38 — bank it, don\'t chase 3:15.'},
     {type:'rest',     mi:0,  target:'Rest', notes:'No lifting from here'},
     {type:'easy',     mi:4,  target:'8:50–9:10 + 4×100m strides', notes:'Strides keep turnover sharp'},
     {type:'rest',     mi:0,  target:'Rest', notes:''},
-    {type:'long',     mi:10, target:'7mi easy → 3mi @ race pace', notes:'Last long-ish run. Rehearse race-morning breakfast, gels and kit.'},
+    {type:'long',     mi:10, target:'7mi easy → 3mi @ 7:38', notes:'Last long-ish run. Rehearse race-morning breakfast, gels and kit.'},
   ]},
   // Index 29 — Race week (Oct 26 – Nov 1)
   {phase:'Taper', target:40, focus:'🏁 RACE WEEK — ~16 mi + 26.2 Sunday. Off feet when possible. Carb load Thu–Sat (8–10 g/kg/day). Bed early Fri — Sat night sleep rarely matters as much.', days:[
     {type:'easy',     mi:4,  target:'8:50–9:10', notes:'Shake out the taper stiffness'},
-    {type:'mp',       mi:5,  target:'1mi wu + 3×1mi @ race pace, 1min jog + 1mi cd', notes:'Last touch of race pace. Should feel almost too easy.'},
+    {type:'mp',       mi:5,  target:'1mi wu + 3×1mi @ 7:38, 1min jog + 1mi cd', notes:'Last touch of race pace. Should feel almost too easy.'},
     {type:'easy',     mi:3,  target:'9:00–9:20', notes:''},
     {type:'easy',     mi:2,  target:'9:00 + 4×100m strides', notes:'Carb load begins. Rice, pasta, bagels. Low fiber.'},
     {type:'rest',     mi:0,  target:'Rest', notes:'Expo / bib pickup. Off feet.'},
     {type:'easy',     mi:2,  target:'Shakeout 2mi + 2 strides', notes:'Gear laid out. Early bedtime.'},
-    {type:'race',     mi:26.2, target:'3:15–3:25 · 7:26–7:49 avg', notes:'🏁 NYC MARATHON — Mile 1 (Verrazzano, uphill) ~8:10 regardless of goal. Miles 2–13 at 5–10s slower than race pace, HR ≤ 158. Halfway check (Pulaski Br.): on pace + HR ≤ 160 → hold. Only push for the faster tier after mile 20 (Bronx) if you still feel good. Queensboro (15–16) and 5th Ave (23–25) by effort, not pace. Gel every 35 min.'},
+    {type:'race',     mi:26.2, target:'3:20 · 7:38 avg', notes:'🏁 NYC MARATHON — Mile 1 (Verrazzano, uphill) ~8:10 regardless of goal. Miles 2–13 at 7:40–7:45, HR ≤ 158. Halfway check (Pulaski Br.): on pace + HR ≤ 160 → hold. Only push for the faster tier after mile 20 (Bronx) if you still feel good. Queensboro (15–16) and 5th Ave (23–25) by effort, not pace. Gel every 35 min.'},
   ]},
 ];
 
